@@ -96,7 +96,7 @@ const CallList = ({ type }: { type: 'ended' | 'upcoming' | 'recordings' }) => {
             handleClick={
               type === 'recordings'
                 ? () => router.push(`${(meeting as CallRecording).url}`)
-                : () => router.push(`/meeting/${(meeting as Call).id}`)
+                : () => router.push(`/connect/meeting/${(meeting as Call).id}`)
             }
           />
         ))

@@ -54,7 +54,7 @@ const MeetingTypeList = () => {
       });
       setCallDetail(call);
       if (!values.description) {
-        router.push(`/meeting/${call.id}`);
+        router.push(`/connect/meeting/${call.id}`);
       }
       toast({
         title: 'Meeting Created',
@@ -96,7 +96,7 @@ const MeetingTypeList = () => {
         title="View Recordings"
         description="Meeting Recordings"
         className="bg-yellow-1"
-        handleClick={() => router.push('/recordings')}
+        handleClick={() => router.push('/connect/recordings')}
       />
 
       {!callDetail ? (

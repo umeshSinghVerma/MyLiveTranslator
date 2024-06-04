@@ -27,7 +27,7 @@ const EndCallButton = () => {
 
   const endCall = async () => {
     await call.endCall();
-    router.push('/');
+    router.push('/connect/');
   };
 
   return (
