@@ -125,7 +125,7 @@ export default function Hero() {
                     </div>
                     <div>
                         <div className='flex-1 hidden md:block'>
-                            <Image width={1000} height={1500} alt="desktop" src="https://raw.githubusercontent.com/sidiDev/remote-assets/c86a7ae02ac188442548f510b5393c04140515d7/undraw_progressive_app_m-9-ms_oftfv5.svg" className="max-w-xl" />
+                            <Image width={1000} height={1500} alt="desktop" src="/home.svg" className="max-w-xl" />
                         </div>
                     </div>
                 </section>
