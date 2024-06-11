@@ -90,7 +90,7 @@ const Page = () => {
     const [selectedUser, setSelectedUser] = useState<any>(null);
 
     const [incomingMessage, setIncomingMessage] = useState("");
-    const [outgoingMessage,setOutgoingMessage]=useState("");
+    const [outgoingMessage, setOutgoingMessage] = useState("");
 
     const [voiceMessages, setVoiceMessages] = useState<any>([]);
     const [currentVoice, setCurrentVoice] = useState({ playing: false, index: 0 });
@@ -322,13 +322,13 @@ const Page = () => {
                 const received = JSON.parse(message.data);
                 const transcript = received?.channel?.alternatives[0]?.transcript;
                 console.log("transcript I am taking ", transcript);
-                setOutgoingMessage(transcript)
                 if (transcript) {
                     socket.emit('sendMessage', {
                         message: transcript,
                         to: selectedUser,
                         language: languageRef.current
                     });
+                    setOutgoingMessage(transcript)
                 }
             };
 
