@@ -118,7 +118,7 @@ export default function Hero() {
                             <Link href={isSignedIn ? "/connect" : "/sign-in"} className="px-7 py-3 w-full bg-white text-gray-800 text-center rounded-md shadow-md block sm:w-auto">
                                 Connect
                             </Link>
-                            <Link href="#" className="px-7 py-3 w-full bg-gray-700 text-gray-200 text-center rounded-md block sm:w-auto">
+                            <Link href={isSignedIn ? "/connect/chat" : "/sign-in"} className="px-7 py-3 w-full bg-gray-700 text-gray-200 text-center rounded-md block sm:w-auto">
                                 Chat
                             </Link>
                         </div>
