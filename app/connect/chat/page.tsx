@@ -76,7 +76,8 @@ const fetchAndPlayAudioHindi = async (text: string): Promise<string> => {
 
 
 
-
+const serverUrl = 'https://mylivtranslatorserver.onrender.com'
+// const serverUrl = 'http://localhost:8080'
 
 const page = () => {
     const user = useUser();
@@ -87,7 +88,10 @@ const page = () => {
     const imageUrl = user?.user?.imageUrl;
     const [activeUsers, setActiveUsers] = useState<{ [key: string]: any }>({});
     const [selectedUser, setSelectedUser] = useState<any>(null);
+
     const [incomingMessage, setIncomingMessage] = useState("");
+    const [outgoingMessage,setOutgoingMessage]=useState("");
+
     const [voiceMessages, setVoiceMessages] = useState<any>([]);
     const [currentVoice, setCurrentVoice] = useState({ playing: false, index: 0 });
     const [isRecording, setIsRecording] = useState(false);
@@ -97,19 +101,20 @@ const page = () => {
     const [selectedLanguage, setSelectedLanguage] = useState('en');
     const [call, setCall] = useState<{ callActive: boolean, state: 'incoming' | 'outgoing' | 'busy' | "missed", senderId: string, recieverId: string, senderUserName: string, senderImage: string | null } | null>(null)
 
-    console.log("call", call);
 
     const socket = useMemo(() => {
-        const query = `username=${username}`;
-        return io(`https://mylivtranslatorserver.onrender.com?${query}`);
+        const url = serverUrl + `?username=${username}&imageUrl=${imageUrl}`
+        return io(url);
     }, []);
     const sendMessageRef = useRef<HTMLInputElement | null>(null);
 
     const languageRef = useRef(selectedLanguage);
     const ringingRef = useRef(call);
-    const selectedUserRef = useRef(selectedUser);
+    const selectedUserRef = useRef(null);
     useEffect(() => {
-        selectedUserRef.current = selectedUser
+        if (selectedUser) {
+            selectedUserRef.current = selectedUser?.socketId
+        }
     }, [selectedUser])
     useEffect(() => {
         languageRef.current = selectedLanguage;
@@ -122,7 +127,7 @@ const page = () => {
     async function getTranslatedText(sourceLanguage: string, message: string) {
         console.log("inside getTranslatedText ", languageRef.current);
         try {
-            const response = await axios.post('https://mylivtranslatorserver.onrender.com/translate', {
+            const response = await axios.post(`${serverUrl}/translate`, {
                 message: message,
                 targetLanguage: languageRef.current,
                 currentLanguage: sourceLanguage
@@ -141,7 +146,7 @@ const page = () => {
 
     useEffect(() => {
         if (selectedUser) {
-            if (!activeUsers[selectedUser]) {
+            if (!activeUsers[selectedUser?.socketId]) {
                 setSelectedUser(null);
             }
         }
@@ -160,12 +165,10 @@ const page = () => {
             if (translatedText) {
                 if (languageRef.current == 'hi') {
                     const audio = await fetchAndPlayAudioHindi(translatedText);
-                    setVoiceMessages((voices: any) => [...voices, audio]);
-                    setIncomingMessage(message.text);
+                    setVoiceMessages((voices: any) => [...voices, { translatedText, audio }]);
                 } else {
                     const audio = await fetchAndPlayAudio(translatedText, languageRef.current);
-                    setVoiceMessages((voices: any) => [...voices, audio]);
-                    setIncomingMessage(message.text);
+                    setVoiceMessages((voices: any) => [...voices, { translatedText, audio }]);
                 }
             }
         })
@@ -244,9 +247,10 @@ const page = () => {
     useEffect(() => {
         if (voiceMessages.length > currentVoice.index && currentVoice.playing == false) {
             const firstAudio = voiceMessages[currentVoice.index];
-            const audio = new Audio(firstAudio);
+            const audio = new Audio(firstAudio.audio);
+            setIncomingMessage(firstAudio.translatedText)
             audio.addEventListener('ended', () => {
-                URL.revokeObjectURL(firstAudio);
+                URL.revokeObjectURL(firstAudio.audio);
                 setCurrentVoice((obj) => {
                     return ({
                         playing: false,
@@ -282,10 +286,10 @@ const page = () => {
                 senderId: socket.id,
                 senderUserName: username,
                 senderImageUrl: imageUrl || null,
-                recieverId: selectedUser
+                recieverId: selectedUser?.socketId
             })
             setCall({
-                senderId: selectedUser,
+                senderId: selectedUser?.socketId,
                 recieverId: socket.id!,
                 state: 'outgoing',
                 senderUserName: username!,
@@ -294,7 +298,6 @@ const page = () => {
             })
         }
     }
-
 
 
     const startCalling = async (selectedUser: any) => {
@@ -317,8 +320,9 @@ const page = () => {
 
             voiceSocketRef.current.onmessage = (message) => {
                 const received = JSON.parse(message.data);
-                const transcript = received.channel.alternatives[0].transcript;
+                const transcript = received?.channel?.alternatives[0]?.transcript;
                 console.log("transcript I am taking ", transcript);
+                setOutgoingMessage(transcript)
                 if (transcript) {
                     socket.emit('sendMessage', {
                         message: transcript,
@@ -394,74 +398,95 @@ const page = () => {
         <div className='h-full w-full flex'>
             <div className='flex flex-col min-w-[300px] items-center p-8 bg-dark-1 rounded-3xl m-5'>
                 <p className='text-white text-2xl font-bold'>Active Users</p>
-                <div>
+                <div className='w-full overflow-y-auto h-full flex flex-col py-2'>
                     {
-                        Object.keys(activeUsers).map((socketId, key: number) => {
-                            if (activeUsers[socketId] == username) {
+                        Object.keys(activeUsers).map((user, key: number) => {
+                            if (activeUsers[user].username == username) {
                                 return null;
                             }
                             return (
                                 <div key={key} onClick={() => {
-                                    setSelectedUser(socketId)
+                                    setSelectedUser({ ...activeUsers[user], socketId: user })
                                 }}>
-                                    <span>username</span>
-                                    <span
-                                        className={clsx({
-                                            'bg-gray-400': selectedUser === socketId,
-                                            'm-5': true
-                                        })}
-                                    >{activeUsers[socketId]}</span>
+                                    <div className={clsx({
+                                        " bg-gray-600": selectedUser?.socketId === user,
+                                        "text-white flex gap-3 items-center w-full py-4 px-2 cursor-pointer rounded-md": true
+                                    })}>
+                                        <img className='rounded-full h-8 w-8' src={activeUsers[user].imageUrl} />
+                                        <p>{activeUsers[user].username}</p>
+                                    </div>
                                 </div>
                             )
                         })
                     }
                 </div>
             </div>
-            <div className='flex flex-col gap-5 min-w-[300px] items-center p-8 bg-dark-1 rounded-3xl m-5 w-full'>
-                {selectedUser &&
-                    <div>
-                        <Button disabled={call != null} onClick={() => {
-                            requestCall(selectedUser);
-                        }}>Call</Button>
+            <div className='flex flex-col gap-5 min-w-[300px] p-8 bg-dark-1 rounded-3xl m-5 w-full'>
+                <div className='flex gap-2'>
+                    <Combobox disabled={isRecording} value={selectedLanguage} setValue={setSelectedLanguage} />
+                    {selectedUser &&
+                        <div>
+                            <Button disabled={call != null} onClick={() => {
+                                requestCall(selectedUser);
+                            }}>Call</Button>
+                        </div>
+                    }
+                </div>
+                <div className='flex gap-2 text-white'>
+                    <div className='w-full'>
+                        <p className='text-2xl font-bold'>Your Speech</p>
+                        <p>
+                            {outgoingMessage}
+                        </p>
                     </div>
-                }
-                <p className='m-5'>{incomingMessage}</p>
-                <Combobox disabled={isRecording} value={selectedLanguage} setValue={setSelectedLanguage} />
+                    <div className='w-full'>
+                        <p className='text-2xl font-bold'>Remote Speech</p>
+                        <p>
+                            {incomingMessage}
+                        </p>
+                    </div>
+                </div>
                 {
-                    call && call.callActive == false &&
-                    <div className='absolute t-5 r-5 m-5 p-5 bg-slate-400'>
+                    call &&
+                    <div className='absolute top-[100px] right-5 m-5 p-5 bg-gray-600 rounded-lg'>
                         {
                             <div>
                                 <p>{call.state}</p>
-                                <div className='flex gap-3'>
+                                {call.state == 'outgoing' && <div className='flex gap-3 my-2'>
+                                    <img src={selectedUser.imageUrl} title={selectedUser.username} className='h-8 w-8 rounded-full' />
+                                    <p>{selectedUser.username}</p>
+                                </div>}
+                                {call.state == 'incoming' && activeUsers[call.senderId] && <div className='flex gap-3 my-2'>
                                     {
-                                        call.senderImage && <img src={call.senderImage} title={call.senderUserName} className='h-8 w-8 rounded-full' />
+                                        <img src={activeUsers[call.senderId].imageUrl} title={activeUsers[call.senderId].username} className='h-8 w-8 rounded-full' />
                                     }
-                                    <p>{call.senderUserName}</p>
-                                </div>
-                                <div>
-                                    {
-                                        call.state == "outgoing" && <Button onClick={onGoingEndCall}>End Call</Button>
-                                    }
-                                </div>
-                                <div>
-                                    {
-                                        call.state == "incoming" &&
+                                    <p>{activeUsers[call.senderId].username}</p>
+                                </div>}
+                                {!call.callActive ?
+                                    <div>
                                         <div>
-                                            <Button onClick={pickCall}>Answer</Button>
-                                            <Button onClick={rejectCall}>Reject</Button>
+                                            {
+                                                call.state == "outgoing" && <Button onClick={onGoingEndCall}>End Call</Button>
+                                            }
                                         </div>
-                                    }
-                                </div>
+                                        <div>
+                                            {
+                                                call.state == "incoming" &&
+                                                <div className='flex gap-2'>
+                                                    <Button onClick={pickCall}>Answer</Button>
+                                                    <Button onClick={rejectCall}>Reject</Button>
+                                                </div>
+                                            }
+                                        </div>
+                                    </div>
+                                    :
+                                    <div className='flex gap-2'>
+                                        <Button>Mute</Button>
+                                        <Button onClick={endCall}>End Call</Button>
+                                    </div>
+                                }
                             </div>
                         }
-                    </div>
-                }
-                {
-                    call && call.callActive &&
-                    <div>
-                        <Button>Mute</Button>
-                        <Button onClick={endCall}>End Call</Button>
                     </div>
                 }
             </div>
