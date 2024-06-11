@@ -79,7 +79,7 @@ const fetchAndPlayAudioHindi = async (text: string): Promise<string> => {
 const serverUrl = 'https://mylivtranslatorserver.onrender.com'
 // const serverUrl = 'http://localhost:8080'
 
-const page = () => {
+const Page = () => {
     const user = useUser();
     const username = user?.user?.username;
     const fullName = user?.user?.fullName;
@@ -494,4 +494,4 @@ const page = () => {
     )
 }
 
-export default page
+export default Page
