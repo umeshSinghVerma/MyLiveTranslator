@@ -387,6 +387,7 @@ const Page = () => {
     }
 
     const endCall = () => {
+        stopCalling();
         socket.emit('endCall', {
             senderId: call?.senderId
         })
