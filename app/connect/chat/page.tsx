@@ -224,12 +224,12 @@ const Page = () => {
             console.log("translated text", translatedText)
             if (translatedText) {
                 if (languageRef.current == 'hi') {
-                    // const audio = await fetchAndPlayAudioHindi(translatedText);
-                    const audio = await convertResponseToAudio(translatedText);
+                    const audio = await fetchAndPlayAudioHindi(translatedText);
+                    // const audio = await convertResponseToAudio(translatedText);
                     setVoiceMessages((voices: any) => [...voices, { translatedText, audio }]);
                 } else {
-                    // const audio = await fetchAndPlayAudio(translatedText, languageRef.current);
-                    const audio = await convertResponseToAudio(translatedText);
+                    const audio = await fetchAndPlayAudio(translatedText, languageRef.current);
+                    // const audio = await convertResponseToAudio(translatedText);
                     setVoiceMessages((voices: any) => [...voices, { translatedText, audio }]);
                 }
             }
