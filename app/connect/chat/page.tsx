@@ -1,3 +1,4 @@
+// @ts-ignore
 'use client'
 import { Button } from '@/components/ui/button';
 import { Combobox } from '@/components/ui/combobox';
@@ -10,7 +11,7 @@ import { io } from 'socket.io-client'
 import Groq from "groq-sdk";
 const groq = new Groq({ apiKey: process.env.NEXT_PUBLIC_GROQ_API_KEY, dangerouslyAllowBrowser: true });
 
-const convertResponseToAudio = async (text:string) => {
+const convertResponseToAudio = async (text: string) => {
     const options = {
         method: 'POST',
         headers: {
@@ -31,21 +32,25 @@ const convertResponseToAudio = async (text:string) => {
 };
 
 
-export async function grokTranslator(message: string, messageLanguage: string, targetLanguage: string) {
-    const response = await groq.chat.completions.create({
-        messages: [
-            {
-                role: "system",
-                content: "You are helpful translator, You will be provided a message, the language of the message (messageLanguage) and the language in which you have to translate the message (targetLanguage). You need to translate the message in the given language. You have to only provide the translated message, not any other message like here is your translated message or something else, only give the translated text",
-            },
-            {
-                role: "user",
-                content: `message=${message}; messageLanguage:${messageLanguage}; targetLanguage:${targetLanguage}`
-            }
-        ],
-        model: "llama3-8b-8192",
-    });
-    return response.choices[0]?.message?.content;
+export async function groqTranslator(message: string, messageLanguage: string, targetLanguage: string) {
+    try {
+        const response = await groq.chat.completions.create({
+            messages: [
+                {
+                    role: "system",
+                    content: "You are helpful translator, You will be provided a message, the language of the message (messageLanguage) and the language in which you have to translate the message (targetLanguage). You need to translate the message in the given language. You have to only provide the translated message, not any other message like here is your translated message or something else, only give the translated text",
+                },
+                {
+                    role: "user",
+                    content: `message=${message}; messageLanguage:${messageLanguage}; targetLanguage:${targetLanguage}`
+                }
+            ],
+            model: "llama3-8b-8192",
+        });
+        return response.choices[0]?.message?.content;
+    } catch (error) {
+        console.log('error occured in grok translation',error);
+    }
 }
 
 const fetchAndPlayAudio = async (text: string, language: string) => {
@@ -200,7 +205,7 @@ const Page = () => {
         socket.on('message', async (message) => {
             console.log('incomingMessage ', message.text);
             // const translatedText = await getTranslatedText(message.language, message.text);
-            const translatedText = await grokTranslator(message.text, message.language, languageRef.current);
+            const translatedText = await groqTranslator(message.text, message.language, languageRef.current);
             console.log("translated text", translatedText)
             if (translatedText) {
                 if (languageRef.current == 'hi') {
@@ -477,13 +482,13 @@ const Page = () => {
                     }
                 </div>
                 <div className='flex gap-2 text-white flex-col md:flex-row w-full h-full'>
-                    <div className='w-full bg-gray-700 h-full flex flex-col items-center'>
+                    <div className='w-full h-full flex flex-col items-center'>
                         <p className='text-2xl font-bold'>Your Speech</p>
                         <p>
                             {outgoingMessage}
                         </p>
                     </div>
-                    <div className='w-full bg-gray-700 h-full  flex flex-col items-center'>
+                    <div className='w-full  h-full flex flex-col items-center '>
                         <p className='text-2xl font-bold'>Remote Speech</p>
                         <p>
                             {incomingMessage}
