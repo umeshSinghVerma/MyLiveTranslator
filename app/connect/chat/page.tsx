@@ -439,8 +439,8 @@ const Page = () => {
 
 
     return (
-        <div className='h-full w-full flex'>
-            <div className='flex flex-col min-w-[300px] items-center p-8 bg-dark-1 rounded-3xl m-5'>
+        <div className='h-full w-full flex flex-col md:flex-row'>
+            <div className='flex flex-col md:min-w-[300px] items-center bg-dark-1 rounded-3xl m-5 p-8'>
                 <p className='text-white text-2xl font-bold'>Active Users</p>
                 <div className='w-full overflow-y-auto h-full flex flex-col py-2'>
                     {
@@ -465,7 +465,7 @@ const Page = () => {
                     }
                 </div>
             </div>
-            <div className='flex flex-col gap-5 min-w-[300px] p-8 bg-dark-1 rounded-3xl m-5 w-full'>
+            <div className='flex flex-col gap-5 p-8 bg-dark-1 rounded-3xl m-5 items-center flex-grow'>
                 <div className='flex gap-2'>
                     <Combobox disabled={call != null} value={selectedLanguage} setValue={setSelectedLanguage} />
                     {selectedUser &&
@@ -476,14 +476,14 @@ const Page = () => {
                         </div>
                     }
                 </div>
-                <div className='flex gap-2 text-white'>
-                    <div className='w-full'>
+                <div className='flex gap-2 text-white flex-col md:flex-row w-full h-full'>
+                    <div className='w-full bg-gray-700 h-full flex flex-col items-center'>
                         <p className='text-2xl font-bold'>Your Speech</p>
                         <p>
                             {outgoingMessage}
                         </p>
                     </div>
-                    <div className='w-full'>
+                    <div className='w-full bg-gray-700 h-full  flex flex-col items-center'>
                         <p className='text-2xl font-bold'>Remote Speech</p>
                         <p>
                             {incomingMessage}
