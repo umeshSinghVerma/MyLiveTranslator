@@ -8,8 +8,6 @@ import axios from 'axios';
 import clsx from 'clsx';
 import { use, useEffect, useMemo, useRef, useState } from 'react'
 import { io } from 'socket.io-client'
-import Groq from "groq-sdk";
-const groq = new Groq({ apiKey: process.env.NEXT_PUBLIC_GROQ_API_KEY, dangerouslyAllowBrowser: true });
 
 const convertResponseToAudio = async (text: string) => {
     const options = {
@@ -31,10 +29,11 @@ const convertResponseToAudio = async (text: string) => {
 
 };
 
-
-export async function groqTranslator(message: string, messageLanguage: string, targetLanguage: string) {
+const translateText = async (message: any, messageLanguage: any, targetLanguage: any) => {
     try {
-        const response = await groq.chat.completions.create({
+        const GROQ_API_KEY = process.env.NEXT_PUBLIC_GROQ_API_KEY;
+        const url = "https://api.groq.com/openai/v1/chat/completions";
+        const data = {
             messages: [
                 {
                     role: "system",
@@ -46,12 +45,28 @@ export async function groqTranslator(message: string, messageLanguage: string, t
                 }
             ],
             model: "llama3-8b-8192",
-        });
-        return response.choices[0]?.message?.content;
+        };
+
+        const res = await axios.post(url, data, {
+            headers: {
+                "Authorization": `Bearer ${GROQ_API_KEY}`,
+                "Content-Type": "application/json"
+            }
+        })
+        const translatedData = res.data;
+        if(translatedData){
+            console.log(translatedData)
+            return translatedData;
+        }else{
+            return null;
+        }
     } catch (error) {
-        console.log('error occured in grok translation',error);
+        console.log('error occured in grok translation', error);
+        return null;
     }
 }
+
+
 
 const fetchAndPlayAudio = async (text: string, language: string) => {
     const DEEPGRAM_URL = `https://api.deepgram.com/v1/speak?model=aura-asteria-en`;
@@ -205,7 +220,7 @@ const Page = () => {
         socket.on('message', async (message) => {
             console.log('incomingMessage ', message.text);
             // const translatedText = await getTranslatedText(message.language, message.text);
-            const translatedText = await groqTranslator(message.text, message.language, languageRef.current);
+            const translatedText = await translateText(message.text, message.language, languageRef.current);
             console.log("translated text", translatedText)
             if (translatedText) {
                 if (languageRef.current == 'hi') {
