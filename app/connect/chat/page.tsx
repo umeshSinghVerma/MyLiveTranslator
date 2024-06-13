@@ -55,8 +55,8 @@ const translateText = async (message: any, messageLanguage: any, targetLanguage:
         })
         const translatedData = res.data;
         if(translatedData){
-            console.log(translatedData)
-            return translatedData;
+            console.log(translatedData.choices[0].message.content)
+            return translatedData.choices[0].message.content;
         }else{
             return null;
         }
