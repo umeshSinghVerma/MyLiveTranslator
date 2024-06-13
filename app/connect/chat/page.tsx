@@ -7,7 +7,46 @@ import axios from 'axios';
 import clsx from 'clsx';
 import { use, useEffect, useMemo, useRef, useState } from 'react'
 import { io } from 'socket.io-client'
+import Groq from "groq-sdk";
+const groq = new Groq({ apiKey: process.env.NEXT_PUBLIC_GROQ_API_KEY, dangerouslyAllowBrowser: true });
 
+const convertResponseToAudio = async (text:string) => {
+    const options = {
+        method: 'POST',
+        headers: {
+            'xi-api-key': 'sk_1880177314483e5a53657232c6b31231e81d584050636cf3',
+            'Content-Type': 'application/json'
+        },
+        body: `{"text":"${text}","model_id":"eleven_multilingual_v2","voice_settings":{"similarity_boost":1,"stability":1}}`
+    };
+
+    fetch('https://api.elevenlabs.io/v1/text-to-speech/21m00Tcm4TlvDq8ikWAM/stream', options)
+        .then(response => response.blob())
+        .then(audioBlob => {
+            const audioUrl = URL.createObjectURL(audioBlob);
+            return audioUrl;
+        })
+        .catch(error => console.error('Error:', error));
+
+};
+
+
+export async function grokTranslator(message: string, messageLanguage: string, targetLanguage: string) {
+    const response = await groq.chat.completions.create({
+        messages: [
+            {
+                role: "system",
+                content: "You are helpful translator, You will be provided a message, the language of the message (messageLanguage) and the language in which you have to translate the message (targetLanguage). You need to translate the message in the given language. You have to only provide the translated message, not any other message like here is your translated message or something else, only give the translated text",
+            },
+            {
+                role: "user",
+                content: `message=${message}; messageLanguage:${messageLanguage}; targetLanguage:${targetLanguage}`
+            }
+        ],
+        model: "llama3-8b-8192",
+    });
+    return response.choices[0]?.message?.content;
+}
 
 const fetchAndPlayAudio = async (text: string, language: string) => {
     const DEEPGRAM_URL = `https://api.deepgram.com/v1/speak?model=aura-asteria-en`;
@@ -94,7 +133,7 @@ const Page = () => {
 
     const [voiceMessages, setVoiceMessages] = useState<any>([]);
     const [currentVoice, setCurrentVoice] = useState({ playing: false, index: 0 });
-    const [isRecording, setIsRecording] = useState(false);
+    const [isSpeaking, setIsSpeaking] = useState(false);
     const mediaRecorderRef = useRef<MediaRecorder | null>(null);
     const mediaStreamRef = useRef<MediaStream | null>(null);
     const voiceSocketRef = useRef<WebSocket | null>(null);
@@ -160,14 +199,17 @@ const Page = () => {
         })
         socket.on('message', async (message) => {
             console.log('incomingMessage ', message.text);
-            const translatedText = await getTranslatedText(message.language, message.text);
+            // const translatedText = await getTranslatedText(message.language, message.text);
+            const translatedText = await grokTranslator(message.text, message.language, languageRef.current);
             console.log("translated text", translatedText)
             if (translatedText) {
                 if (languageRef.current == 'hi') {
-                    const audio = await fetchAndPlayAudioHindi(translatedText);
+                    // const audio = await fetchAndPlayAudioHindi(translatedText);
+                    const audio = await convertResponseToAudio(translatedText);
                     setVoiceMessages((voices: any) => [...voices, { translatedText, audio }]);
                 } else {
-                    const audio = await fetchAndPlayAudio(translatedText, languageRef.current);
+                    // const audio = await fetchAndPlayAudio(translatedText, languageRef.current);
+                    const audio = await convertResponseToAudio(translatedText);
                     setVoiceMessages((voices: any) => [...voices, { translatedText, audio }]);
                 }
             }
@@ -258,6 +300,7 @@ const Page = () => {
                     })
                 });
             });
+            setIsSpeaking(true);
             audio.play();
             setCurrentVoice((obj) => {
                 return (
@@ -269,6 +312,7 @@ const Page = () => {
             })
         }
         else if (voiceMessages.length > 0 && currentVoice.index == voiceMessages.length) {
+            setIsSpeaking(false);
             setCurrentVoice((obj) => {
                 return ({
                     playing: false,
@@ -301,40 +345,40 @@ const Page = () => {
 
 
     const startCalling = async (selectedUser: any) => {
-        try {
-            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-            mediaStreamRef.current = stream;
-            mediaRecorderRef.current = new MediaRecorder(stream, { mimeType: 'audio/webm' });
-            const currentLanguage = languageRef.current;;
-            console.log('current lang in startCalling', currentLanguage);
-            voiceSocketRef.current = new WebSocket(`wss://api.deepgram.com/v1/listen?model=nova-2-general&punctuate=true&language=${currentLanguage}`, ['token', '0b7b597321b6483dd2e2098526a774944ca94dcf']);
+        if (isSpeaking == false) {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                mediaStreamRef.current = stream;
+                mediaRecorderRef.current = new MediaRecorder(stream, { mimeType: 'audio/webm' });
+                const currentLanguage = languageRef.current;;
+                console.log('current lang in startCalling', currentLanguage);
+                voiceSocketRef.current = new WebSocket(`wss://api.deepgram.com/v1/listen?model=nova-2-general&punctuate=true&language=${currentLanguage}`, ['token', '0b7b597321b6483dd2e2098526a774944ca94dcf']);
 
-            voiceSocketRef.current.onopen = () => {
-                mediaRecorderRef.current!.addEventListener('dataavailable', event => {
-                    if (voiceSocketRef.current?.readyState === WebSocket.OPEN) {
-                        voiceSocketRef.current.send(event.data);
-                    }
-                });
-                mediaRecorderRef.current!.start(250);
-            };
-
-            voiceSocketRef.current.onmessage = (message) => {
-                const received = JSON.parse(message.data);
-                const transcript = received?.channel?.alternatives[0]?.transcript;
-                console.log("transcript I am taking ", transcript);
-                if (transcript) {
-                    socket.emit('sendMessage', {
-                        message: transcript,
-                        to: selectedUser,
-                        language: languageRef.current
+                voiceSocketRef.current.onopen = () => {
+                    mediaRecorderRef.current!.addEventListener('dataavailable', event => {
+                        if (voiceSocketRef.current?.readyState === WebSocket.OPEN) {
+                            voiceSocketRef.current.send(event.data);
+                        }
                     });
-                    setOutgoingMessage(transcript)
-                }
-            };
+                    mediaRecorderRef.current!.start(250);
+                };
 
-            setIsRecording(true);
-        } catch (error) {
-            console.error('Error accessing media devices.', error);
+                voiceSocketRef.current.onmessage = (message) => {
+                    const received = JSON.parse(message.data);
+                    const transcript = received?.channel?.alternatives[0]?.transcript;
+                    console.log("transcript I am taking ", transcript);
+                    if (transcript) {
+                        socket.emit('sendMessage', {
+                            message: transcript,
+                            to: selectedUser,
+                            language: languageRef.current
+                        });
+                        setOutgoingMessage(transcript)
+                    }
+                };
+            } catch (error) {
+                console.error('Error accessing media devices.', error);
+            }
         }
     };
 
@@ -355,7 +399,6 @@ const Page = () => {
         mediaStreamRef.current = null;
         voiceSocketRef.current = null;
 
-        setIsRecording(false);
     };
 
     const onGoingEndCall = () => {
@@ -424,7 +467,7 @@ const Page = () => {
             </div>
             <div className='flex flex-col gap-5 min-w-[300px] p-8 bg-dark-1 rounded-3xl m-5 w-full'>
                 <div className='flex gap-2'>
-                    <Combobox disabled={isRecording} value={selectedLanguage} setValue={setSelectedLanguage} />
+                    <Combobox disabled={call != null} value={selectedLanguage} setValue={setSelectedLanguage} />
                     {selectedUser &&
                         <div>
                             <Button disabled={call != null} onClick={() => {
@@ -453,7 +496,7 @@ const Page = () => {
                         {
                             <div>
                                 <p>{call.state}</p>
-                                {call.state == 'outgoing' && <div className='flex gap-3 my-2'>
+                                {call.state == 'outgoing' && selectedUser && <div className='flex gap-3 my-2'>
                                     <img src={selectedUser.imageUrl} title={selectedUser.username} className='h-8 w-8 rounded-full' />
                                     <p>{selectedUser.username}</p>
                                 </div>}
