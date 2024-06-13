@@ -31,7 +31,7 @@ const convertResponseToAudio = async (text: string) => {
 
 const translateText = async (message: any, messageLanguage: any, targetLanguage: any) => {
     try {
-        const GROQ_API_KEY = process.env.NEXT_PUBLIC_GROQ_API_KEY;
+        const GROQ_API_KEY = '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';
         const url = "https://api.groq.com/openai/v1/chat/completions";
         const data = {
             messages: [
