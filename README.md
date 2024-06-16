@@ -20,6 +20,11 @@ Built with the latest Next.js and TypeScript, this project replicates Zoom, a wi
 - getstream
 - shadcn
 - Tailwind CSS
+- Socket.io
+- Deepgram
+- Groq
+- Elevenlabs api
+- iTranslate api
 
 ## <a name="features">🔋 Features</a>
 
@@ -41,6 +46,8 @@ Built with the latest Next.js and TypeScript, this project replicates Zoom, a wi
 👉 **Personal Room**: Users have a personal room with a unique meeting link for instant meetings, shareable with others.
 
 👉 **Join Meetings via Link**: Easily join meetings created by others by providing a link.
+
+👉 **Real Time Translation during Audio Call**: Easily communicate without any language barrier.
 
 👉 **Secure Real-time Functionality**: All interactions within the platform are secure and occur in real-time, maintaining user privacy and data integrity.
 
