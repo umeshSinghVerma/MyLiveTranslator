@@ -229,7 +229,7 @@ export default function MainComponent() {
             ////console.log('error during translation', e);
             return null;
         }
-    }
+    } 
  
     useEffect(() => {
         if (selectedUser) {
