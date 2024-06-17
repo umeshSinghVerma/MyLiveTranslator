@@ -230,7 +230,7 @@ export default function MainComponent() {
             return null;
         }
     }
-
+ 
     useEffect(() => {
         if (selectedUser) {
             if (!activeUsers[selectedUser?.socketId]) {
