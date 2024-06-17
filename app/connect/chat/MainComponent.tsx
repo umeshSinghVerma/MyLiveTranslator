@@ -209,7 +209,7 @@ export default function MainComponent() {
 
     useEffect(() => {
         ringingRef.current = call;
-    }, [call])
+    }, [call]) 
 
     async function getTranslatedText(sourceLanguage: string, message: string) {
         ////console.log("inside getTranslatedText ", languageRef.current);
