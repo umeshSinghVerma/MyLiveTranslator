@@ -4,21 +4,23 @@ import { CancelCallButton, ToggleAudioPublishingButton, ToggleVideoPublishingBut
 import { Button } from "./ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator } from "./ui/dropdown-menu";
 import { DropdownMenuTrigger } from "@radix-ui/react-dropdown-menu";
-import { Languages, LayoutList, MicIcon, MicOffIcon, Settings } from "lucide-react";
+import { Languages, LayoutList, MicIcon, MicOffIcon, Settings, AtomIcon } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { StreamChat } from "stream-chat";
 import { tokenProvider } from "@/actions/stream.actions";
-import { translateTextGroq } from "@/lib/translate";
+import { translateTextGroq, translateTextItranslate } from "@/lib/translate";
 import { convertResponseToAudio } from "@/lib/getAudio";
+import { cn } from "@/lib/utils";
 
 const Translate = ({ meetingId, user }: { meetingId: string | string[], user: any }) => {
   const router = useRouter();
   const [client, setClient] = useState<any>();
   const [channel, setChannel] = useState<any>();
-  const languageRef = useRef<string>('en');
+  const [language, setLanguage] = useState<string>('en');
   const [voiceMessages, setVoiceMessages] = useState<any>([]);
   const [currentVoice, setCurrentVoice] = useState({ playing: false, index: 0 });
+  const [groq, setGroq] = useState(true);
 
   const speakingRef = useRef(false);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
@@ -62,10 +64,15 @@ const Translate = ({ meetingId, user }: { meetingId: string | string[], user: an
           console.log("event mesg", user?.id);
           const senderMessage = event.message?.text as string;
           const senderlanguage = event.message?.language as string;
-          const recieverLanguage = languageRef.current as string;
+          const recieverLanguage = language as string;
           if (senderMessage && senderlanguage && recieverLanguage) {
             let audio: string | null;
-            const translatedText = await translateTextGroq(senderMessage, senderlanguage, recieverLanguage);
+            let translatedText;
+            if (groq) {
+              translatedText = await translateTextGroq(senderMessage, senderlanguage, recieverLanguage);
+            } else {
+              translatedText = await translateTextItranslate(senderMessage, senderlanguage, recieverLanguage);
+            }
             if (translatedText) {
               audio = await convertResponseToAudio(translatedText);
               if (translatedText && audio) {
@@ -147,7 +154,7 @@ const Translate = ({ meetingId, user }: { meetingId: string | string[], user: an
         const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
         mediaStreamRef.current = stream;
         mediaRecorderRef.current = new MediaRecorder(stream, { mimeType: 'audio/webm' });
-        const currentLanguage = languageRef.current;
+        const currentLanguage = language;
         voiceSocketRef.current = new WebSocket(`wss://api.deepgram.com/v1/listen?model=nova-2-general&punctuate=true&language=${currentLanguage}`, ['token', '0b7b597321b6483dd2e2098526a774944ca94dcf']);
 
         voiceSocketRef.current.onopen = () => {
@@ -166,7 +173,7 @@ const Translate = ({ meetingId, user }: { meetingId: string | string[], user: an
             console.log('transcript ', transcript);
             const response = await channel.sendMessage({
               text: transcript,
-              language: languageRef.current
+              language: language
             });
             console.log("response of send message ", response);
           }
@@ -225,6 +232,10 @@ const Translate = ({ meetingId, user }: { meetingId: string | string[], user: an
           {['normal', 'translate'].map((item, index) => (
             <div key={index}>
               <DropdownMenuItem
+                className={cn({
+                  "bg-white text-blue-950": (item == state),
+                  "": true
+                })}
                 onClick={() => {
                   if (item == "normal") {
                     stopCalling();
@@ -265,8 +276,13 @@ const Translate = ({ meetingId, user }: { meetingId: string | string[], user: an
             }].map((item, index) => (
               <div key={index}>
                 <DropdownMenuItem
-                  onClick={() =>
-                    languageRef.current = item.value
+                  className={cn({
+                    "bg-white text-blue-950": (item.value == language),
+                    "": true
+                  })}
+                  onClick={() => {
+                    setLanguage(item.value);
+                  }
                   }
                 >
                   {item.label}
@@ -275,7 +291,38 @@ const Translate = ({ meetingId, user }: { meetingId: string | string[], user: an
               </div>
             ))}
         </DropdownMenuContent>
-      </DropdownMenu>}
+      </DropdownMenu>
+      }
+      <DropdownMenu>
+        <div className="flex items-center">
+          <DropdownMenuTrigger className="cursor-pointer rounded-2xl bg-[#19232d] px-4 py-2 hover:bg-[#4c535b]  ">
+            <AtomIcon size={20} className="text-white" />
+          </DropdownMenuTrigger>
+        </div>
+        <DropdownMenuContent className="border-dark-1 bg-dark-1 text-white">
+          {['groq', 'iTranslate'].map((item, index) => (
+            <div key={index}>
+              <DropdownMenuItem
+                className={cn({
+                  "bg-white text-blue-950": (item == "iTranslate" && groq == false) || (item == "groq" && groq == true),
+                  "": true
+                })}
+                onClick={() => {
+                  if (item == 'groq') {
+                    setGroq(true)
+                  } else {
+                    setGroq(false);
+                  }
+                }
+                }
+              >
+                {item}
+              </DropdownMenuItem>
+              <DropdownMenuSeparator className="border-dark-1" />
+            </div>
+          ))}
+        </DropdownMenuContent>
+      </DropdownMenu>
 
     </div>
   )
