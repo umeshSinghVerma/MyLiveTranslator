@@ -15,7 +15,7 @@ import {
   ToggleVideoPublishingButton
 } from '@stream-io/video-react-sdk';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Users, LayoutList } from 'lucide-react';
+import { Users, LayoutList,MicIcon,MicOffIcon,Languages,Settings } from 'lucide-react';
 import { StreamChat } from 'stream-chat'
 
 import {
@@ -31,7 +31,7 @@ import { cn } from '@/lib/utils';
 import { tokenProvider } from '@/actions/stream.actions';
 import { Button } from './ui/button';
 import { convertResponseToAudio } from '@/lib/getAudio';
-import { translateTextGroq, translateTextItranslate } from '@/lib/translate';
+import { translateTextGroq, translateTextItranslate, translateTextItranslatet } from '@/lib/translate';
 
 type CallLayoutType = 'grid' | 'speaker-left' | 'speaker-right';
 
@@ -60,9 +60,6 @@ const MeetingRoom = ({ meetingId, user }: { meetingId: string | string[], user: 
   const call = useCall();
   function disableCallMicrophone() {
     call!.microphone.disable();
-  }
-  function enableCallMicrophone() {
-    call!.microphone.enable();
   }
 
 
@@ -95,7 +92,9 @@ const MeetingRoom = ({ meetingId, user }: { meetingId: string | string[], user: 
           const recieverLanguage = languageRef.current as string;
           if (senderMessage && senderlanguage && recieverLanguage) {
             let audio: string | null;
-            const translatedText = await translateTextGroq(senderMessage, senderlanguage, recieverLanguage);
+            // const translatedText = await translateTextGroq(senderMessage, senderlanguage, recieverLanguage);
+            const translatedText = await translateTextItranslate(senderMessage, senderlanguage, recieverLanguage);
+            console.log("translated text",translatedText);
             if (translatedText) {
               audio = await convertResponseToAudio(translatedText);
               if (translatedText && audio) {
@@ -108,11 +107,13 @@ const MeetingRoom = ({ meetingId, user }: { meetingId: string | string[], user: 
               }
             }
           }
+          const messageId = event.message?.id;
+          if(user?.id==event.message?.user?.id){
+            await client.deleteMessage(messageId!, true);
+          }
+          console.log('received a new message', event);
+          console.log(`Now have ${channel.state.messages.length} stored in local state`);
         }
-        const messageId = event.message?.id;
-        await client.deleteMessage(messageId!, true);
-        console.log('received a new message', event);
-        console.log(`Now have ${channel.state.messages.length} stored in local state`);
       });
 
       await channel.watch();
@@ -131,11 +132,7 @@ const MeetingRoom = ({ meetingId, user }: { meetingId: string | string[], user: 
   useEffect(() => {
     if (voiceMessages.length > currentVoice.index && currentVoice.playing == false) {
       const firstAudio = voiceMessages[currentVoice.index];
-      //console.log("this is first audio ",firstAudio);
       const audio = new Audio(firstAudio.audio);
-      const displayText = firstAudio.translatedText;
-      //console.log("this is displayText ", displayText);
-      // setIncomingMessage(displayText);
       audio.addEventListener('ended', () => {
         URL.revokeObjectURL(firstAudio.audio);
         setCurrentVoice((obj) => {
@@ -184,7 +181,7 @@ const MeetingRoom = ({ meetingId, user }: { meetingId: string | string[], user: 
               voiceSocketRef.current.send(event.data);
             }
           });
-          mediaRecorderRef.current!.start(250);
+          mediaRecorderRef?.current!?.start(250);
         };
 
         voiceSocketRef.current.onmessage = async (message) => {
@@ -252,31 +249,31 @@ const MeetingRoom = ({ meetingId, user }: { meetingId: string | string[], user: 
         </div>
       </div>
       {/* video layout and call controls */}
-      <div className="fixed bottom-0 flex w-full items-center justify-center gap-5">
+      <div className="fixed bottom-5 flex w-full items-center justify-center gap-5">
         {/* <CallControls onLeave={() => router.push(`/`)} /> */}
         {
           state == "normal" ?
             <ToggleAudioPublishingButton />
             :
-            <div>
-              {tmute ? <Button onClick={() => {
+            <>
+              {tmute ? <Button className='bg-[#dc433b] h-[40px] rounded-full'  onClick={() => {
                 disableCallMicrophone();
                 setTMute(false);
                 startCalling();
-              }}>Unmute</Button>
+              }}><MicOffIcon className="text-white" /></Button>
                 :
-                <Button onClick={() => {
+                <Button className='bg-[#dc433b] h-[40px] rounded-full' onClick={() => {
                   setTMute(true);
                   stopCalling();
-                }}>Mute</Button>}
-            </div>
+                }}><MicIcon className="text-white" /></Button>}
+            </>
         }
         <ToggleVideoPublishingButton />
         <CancelCallButton onLeave={() => router.push(`/`)} />
         <DropdownMenu>
           <div className="flex items-center">
             <DropdownMenuTrigger className="cursor-pointer rounded-2xl bg-[#19232d] px-4 py-2 hover:bg-[#4c535b]  ">
-              <LayoutList size={20} className="text-white" />
+              <Settings size={20} className="text-white" />
             </DropdownMenuTrigger>
           </div>
           <DropdownMenuContent className="border-dark-1 bg-dark-1 text-white">
@@ -304,7 +301,7 @@ const MeetingRoom = ({ meetingId, user }: { meetingId: string | string[], user: 
         {state == "translate" && <DropdownMenu>
           <div className="flex items-center">
             <DropdownMenuTrigger className="cursor-pointer rounded-2xl bg-[#19232d] px-4 py-2 hover:bg-[#4c535b]  ">
-              <LayoutList size={20} className="text-white" />
+              <Languages size={20} className="text-white" />
             </DropdownMenuTrigger>
           </div>
           <DropdownMenuContent className="border-dark-1 bg-dark-1 text-white">

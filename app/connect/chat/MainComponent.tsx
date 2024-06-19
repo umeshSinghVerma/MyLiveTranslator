@@ -212,7 +212,6 @@ export default function MainComponent() {
     }, [call]) 
 
     async function getTranslatedText(sourceLanguage: string, message: string) {
-        ////console.log("inside getTranslatedText ", languageRef.current);
         try {
             const response = await axios.post(`${serverUrl}/translate`, {
                 message: message,
