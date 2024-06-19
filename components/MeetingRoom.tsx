@@ -15,9 +15,10 @@ import {
   ToggleVideoPublishingButton
 } from '@stream-io/video-react-sdk';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Users, LayoutList,MicIcon,MicOffIcon,Languages,Settings } from 'lucide-react';
+import { Users, LayoutList, MicIcon, MicOffIcon, Languages, Settings, MessageCircleCode } from 'lucide-react';
 import { StreamChat } from 'stream-chat'
-
+import { useCreateChatClient, Chat, Channel, ChannelHeader, MessageInput, MessageList, Thread, Window } from 'stream-chat-react';
+import 'stream-chat-react/dist/css/v2/index.css';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -46,6 +47,10 @@ const MeetingRoom = ({ meetingId, user }: { meetingId: string | string[], user: 
   const callingState = useCallCallingState();
   const [client, setClient] = useState<any>();
   const [channel, setChannel] = useState<any>();
+
+  const [messageClient, setMessageClient] = useState<any>();
+  const [messageChannel, setmessageChannel] = useState<any>();
+
   const languageRef = useRef<string>('en');
   const [voiceMessages, setVoiceMessages] = useState<any>([]);
   const [currentVoice, setCurrentVoice] = useState({ playing: false, index: 0 });
@@ -68,9 +73,19 @@ const MeetingRoom = ({ meetingId, user }: { meetingId: string | string[], user: 
 
     (async function run() {
       const client = StreamChat.getInstance(process.env.NEXT_PUBLIC_STREAM_API_KEY!);
+      const messageClient = StreamChat.getInstance(process.env.NEXT_PUBLIC_STREAM_API_KEY!);
       setClient(client);
+      setMessageClient(messageClient);
 
       await client.connectUser(
+        {
+          id: user?.id,
+          name: user?.username || user?.id,
+          image: user?.imageUrl,
+        },
+        tokenProvider
+      )
+      await messageClient.connectUser(
         {
           id: user?.id,
           name: user?.username || user?.id,
@@ -81,6 +96,9 @@ const MeetingRoom = ({ meetingId, user }: { meetingId: string | string[], user: 
 
       const channel = client.channel('livestream', `${meetingId as string}`, {
         name: 'voice channel',
+      });
+      const messageChannel = client.channel('livestream', `${meetingId as string}-messages`, {
+        name: 'Messages',
       });
 
       channel.on('message.new', async (event) => {
@@ -94,7 +112,7 @@ const MeetingRoom = ({ meetingId, user }: { meetingId: string | string[], user: 
             let audio: string | null;
             // const translatedText = await translateTextGroq(senderMessage, senderlanguage, recieverLanguage);
             const translatedText = await translateTextItranslate(senderMessage, senderlanguage, recieverLanguage);
-            console.log("translated text",translatedText);
+            console.log("translated text", translatedText);
             if (translatedText) {
               audio = await convertResponseToAudio(translatedText);
               if (translatedText && audio) {
@@ -108,7 +126,7 @@ const MeetingRoom = ({ meetingId, user }: { meetingId: string | string[], user: 
             }
           }
           const messageId = event.message?.id;
-          if(user?.id==event.message?.user?.id){
+          if (user?.id == event.message?.user?.id) {
             await client.deleteMessage(messageId!, true);
           }
           console.log('received a new message', event);
@@ -117,14 +135,18 @@ const MeetingRoom = ({ meetingId, user }: { meetingId: string | string[], user: 
       });
 
       await channel.watch();
+      await messageChannel.watch();
 
 
       setChannel(channel);
+      setmessageChannel(messageChannel);
     })();
 
     return () => {
       client?.disconnectUser();
+      messageClient?.disconnectUser();
       setChannel(undefined);
+      setMessageClient(undefined);
     }
 
   }, [user.id]);
@@ -201,6 +223,7 @@ const MeetingRoom = ({ meetingId, user }: { meetingId: string | string[], user: 
       }
     }
   };
+  const [showMessages, setShowMessages] = useState(false);
 
   const stopCalling = () => {
     if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
@@ -235,132 +258,147 @@ const MeetingRoom = ({ meetingId, user }: { meetingId: string | string[], user: 
   };
 
   return (
-    <section className="relative h-screen w-full overflow-hidden pt-4 text-white">
-      <div className="relative flex size-full items-center justify-center">
-        <div className=" flex size-full max-w-[1000px] items-center">
-          <CallLayout />
-        </div>
-        <div
-          className={cn('h-[calc(100vh-86px)] hidden ml-2', {
-            'show-block': showParticipants,
-          })}
-        >
-          <CallParticipantsList onClose={() => setShowParticipants(false)} />
-        </div>
-      </div>
-      {/* video layout and call controls */}
-      <div className="fixed bottom-5 flex w-full items-center justify-center gap-5">
-        {/* <CallControls onLeave={() => router.push(`/`)} /> */}
-        {
-          state == "normal" ?
-            <ToggleAudioPublishingButton />
-            :
-            <>
-              {tmute ? <Button className='bg-[#dc433b] h-[40px] rounded-full'  onClick={() => {
-                disableCallMicrophone();
-                setTMute(false);
-                startCalling();
-              }}><MicOffIcon className="text-white" /></Button>
-                :
-                <Button className='bg-[#dc433b] h-[40px] rounded-full' onClick={() => {
-                  setTMute(true);
-                  stopCalling();
-                }}><MicIcon className="text-white" /></Button>}
-            </>
-        }
-        <ToggleVideoPublishingButton />
-        <CancelCallButton onLeave={() => router.push(`/`)} />
-        <DropdownMenu>
-          <div className="flex items-center">
-            <DropdownMenuTrigger className="cursor-pointer rounded-2xl bg-[#19232d] px-4 py-2 hover:bg-[#4c535b]  ">
-              <Settings size={20} className="text-white" />
-            </DropdownMenuTrigger>
+    <div className='flex'>
+      <section className="relative h-screen w-full overflow-hidden pt-4 text-white">
+        <div className="relative flex size-full items-center justify-center">
+          <div className=" flex size-full max-w-[1000px] items-center">
+            <CallLayout />
           </div>
-          <DropdownMenuContent className="border-dark-1 bg-dark-1 text-white">
-            {['normal', 'translate'].map((item, index) => (
-              <div key={index}>
-                <DropdownMenuItem
-                  onClick={() => {
-                    if (item == "normal") {
-                      stopCalling();
-                    } else {
-                      disableCallMicrophone();
-                      startCalling();
-                    }
-                    setState(item as "normal" | "translate")
-                  }
-                  }
-                >
-                  {item}
-                </DropdownMenuItem>
-                <DropdownMenuSeparator className="border-dark-1" />
-              </div>
-            ))}
-          </DropdownMenuContent>
-        </DropdownMenu>
-        {state == "translate" && <DropdownMenu>
-          <div className="flex items-center">
-            <DropdownMenuTrigger className="cursor-pointer rounded-2xl bg-[#19232d] px-4 py-2 hover:bg-[#4c535b]  ">
-              <Languages size={20} className="text-white" />
-            </DropdownMenuTrigger>
+          <div
+            className={cn('h-[calc(100vh-86px)] hidden ml-2', {
+              'show-block': showParticipants,
+            })}
+          >
+            <CallParticipantsList onClose={() => setShowParticipants(false)} />
           </div>
-          <DropdownMenuContent className="border-dark-1 bg-dark-1 text-white">
-            {[
-              {
-                value: "en",
-                label: "English",
-              },
-              {
-                value: "hi",
-                label: "hindi",
-              },
-              {
-                value: "de",
-                label: "german"
-              }].map((item, index) => (
+        </div>
+        {/* video layout and call controls */}
+        <div className="fixed bottom-5 flex w-full items-center justify-center gap-5">
+          {/* <CallControls onLeave={() => router.push(`/`)} /> */}
+          {
+            state == "normal" ?
+              <ToggleAudioPublishingButton />
+              :
+              <>
+                {tmute ? <Button className='bg-[#dc433b] h-[40px] rounded-full' onClick={() => {
+                  disableCallMicrophone();
+                  setTMute(false);
+                  startCalling();
+                }}><MicOffIcon className="text-white" /></Button>
+                  :
+                  <Button className='bg-[#dc433b] h-[40px] rounded-full' onClick={() => {
+                    setTMute(true);
+                    stopCalling();
+                  }}><MicIcon className="text-white" /></Button>}
+              </>
+          }
+          <ToggleVideoPublishingButton />
+          <CancelCallButton onLeave={() => router.push(`/`)} />
+          <DropdownMenu>
+            <div className="flex items-center">
+              <DropdownMenuTrigger className="cursor-pointer rounded-2xl bg-[#19232d] px-4 py-2 hover:bg-[#4c535b]  ">
+                <Settings size={20} className="text-white" />
+              </DropdownMenuTrigger>
+            </div>
+            <DropdownMenuContent className="border-dark-1 bg-dark-1 text-white">
+              {['normal', 'translate'].map((item, index) => (
                 <div key={index}>
                   <DropdownMenuItem
-                    onClick={() =>
-                      languageRef.current = item.value
+                    onClick={() => {
+                      if (item == "normal") {
+                        stopCalling();
+                      } else {
+                        disableCallMicrophone();
+                        startCalling();
+                      }
+                      setState(item as "normal" | "translate")
+                    }
                     }
                   >
-                    {item.label}
+                    {item}
                   </DropdownMenuItem>
                   <DropdownMenuSeparator className="border-dark-1" />
                 </div>
               ))}
-          </DropdownMenuContent>
-        </DropdownMenu>}
-        <DropdownMenu>
-          <div className="flex items-center">
-            <DropdownMenuTrigger className="cursor-pointer rounded-2xl bg-[#19232d] px-4 py-2 hover:bg-[#4c535b]  ">
-              <LayoutList size={20} className="text-white" />
-            </DropdownMenuTrigger>
-          </div>
-          <DropdownMenuContent className="border-dark-1 bg-dark-1 text-white">
-            {['Grid', 'Speaker-Left', 'Speaker-Right'].map((item, index) => (
-              <div key={index}>
-                <DropdownMenuItem
-                  onClick={() =>
-                    setLayout(item.toLowerCase() as CallLayoutType)
-                  }
-                >
-                  {item}
-                </DropdownMenuItem>
-                <DropdownMenuSeparator className="border-dark-1" />
-              </div>
-            ))}
-          </DropdownMenuContent>
-        </DropdownMenu>
-        <CallStatsButton />
-        <button onClick={() => setShowParticipants((prev) => !prev)}>
-          <div className=" cursor-pointer rounded-2xl bg-[#19232d] px-4 py-2 hover:bg-[#4c535b]  ">
-            <Users size={20} className="text-white" />
-          </div>
-        </button>
-        {!isPersonalRoom && <EndCallButton />}
-      </div>
-    </section >
+            </DropdownMenuContent>
+          </DropdownMenu>
+          {state == "translate" && <DropdownMenu>
+            <div className="flex items-center">
+              <DropdownMenuTrigger className="cursor-pointer rounded-2xl bg-[#19232d] px-4 py-2 hover:bg-[#4c535b]  ">
+                <Languages size={20} className="text-white" />
+              </DropdownMenuTrigger>
+            </div>
+            <DropdownMenuContent className="border-dark-1 bg-dark-1 text-white">
+              {[
+                {
+                  value: "en",
+                  label: "English",
+                },
+                {
+                  value: "hi",
+                  label: "hindi",
+                },
+                {
+                  value: "de",
+                  label: "german"
+                }].map((item, index) => (
+                  <div key={index}>
+                    <DropdownMenuItem
+                      onClick={() =>
+                        languageRef.current = item.value
+                      }
+                    >
+                      {item.label}
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator className="border-dark-1" />
+                  </div>
+                ))}
+            </DropdownMenuContent>
+          </DropdownMenu>}
+          <DropdownMenu>
+            <div className="flex items-center">
+              <DropdownMenuTrigger className="cursor-pointer rounded-2xl bg-[#19232d] px-4 py-2 hover:bg-[#4c535b]  ">
+                <LayoutList size={20} className="text-white" />
+              </DropdownMenuTrigger>
+            </div>
+            <DropdownMenuContent className="border-dark-1 bg-dark-1 text-white">
+              {['Grid', 'Speaker-Left', 'Speaker-Right'].map((item, index) => (
+                <div key={index}>
+                  <DropdownMenuItem
+                    onClick={() =>
+                      setLayout(item.toLowerCase() as CallLayoutType)
+                    }
+                  >
+                    {item}
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator className="border-dark-1" />
+                </div>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
+          <Button onClick={() => setShowMessages(!showMessages)}><MessageCircleCode size={24} /></Button>
+          <CallStatsButton />
+          <button onClick={() => setShowParticipants((prev) => !prev)}>
+            <div className=" cursor-pointer rounded-2xl bg-[#19232d] px-4 py-2 hover:bg-[#4c535b]  ">
+              <Users size={20} className="text-white" />
+            </div>
+          </button>
+          {!isPersonalRoom && <EndCallButton />}
+        </div>
+      </section >
+      {showMessages && <div className='w-[30%] min-w-[300px] bg-yellow-1'>
+        <Chat client={messageClient}>
+          <Channel channel={messageChannel}>
+            <Window>
+              <ChannelHeader />
+              <MessageList />
+              <MessageInput />
+            </Window>
+            <Thread />
+          </Channel>
+        </Chat>
+      </div>}
+    </div>
   );
 };
 
