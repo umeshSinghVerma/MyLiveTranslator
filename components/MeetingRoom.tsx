@@ -1,5 +1,5 @@
 'use client';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   CallControls,
   CallParticipantsList,
@@ -7,10 +7,16 @@ import {
   CallingState,
   PaginatedGridLayout,
   SpeakerLayout,
+  useCall,
   useCallStateHooks,
+  CancelCallButton,
+  SpeakingWhileMutedNotification,
+  ToggleAudioPublishingButton,
+  ToggleVideoPublishingButton
 } from '@stream-io/video-react-sdk';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Users, LayoutList } from 'lucide-react';
+import { StreamChat } from 'stream-chat'
 
 import {
   DropdownMenu,
@@ -22,10 +28,14 @@ import {
 import Loader from './Loader';
 import EndCallButton from './EndCallButton';
 import { cn } from '@/lib/utils';
+import { tokenProvider } from '@/actions/stream.actions';
+import { Button } from './ui/button';
+import { convertResponseToAudio } from '@/lib/getAudio';
+import { translateTextGroq, translateTextItranslate } from '@/lib/translate';
 
 type CallLayoutType = 'grid' | 'speaker-left' | 'speaker-right';
 
-const MeetingRoom = () => {
+const MeetingRoom = ({ meetingId, user }: { meetingId: string | string[], user: any }) => {
   const searchParams = useSearchParams();
   const isPersonalRoom = !!searchParams.get('personal');
   const router = useRouter();
@@ -33,8 +43,186 @@ const MeetingRoom = () => {
   const [showParticipants, setShowParticipants] = useState(false);
   const { useCallCallingState } = useCallStateHooks();
 
-  // for more detail about types of CallingState see: https://getstream.io/video/docs/react/ui-cookbook/ringing-call/#incoming-call-panel
   const callingState = useCallCallingState();
+  const [client, setClient] = useState<any>();
+  const [channel, setChannel] = useState<any>();
+  const languageRef = useRef<string>('en');
+  const [voiceMessages, setVoiceMessages] = useState<any>([]);
+  const [currentVoice, setCurrentVoice] = useState({ playing: false, index: 0 });
+
+  const speakingRef = useRef(false);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const mediaStreamRef = useRef<MediaStream | null>(null);
+  const voiceSocketRef = useRef<WebSocket | null>(null);
+  const [state, setState] = useState<'normal' | "translate">("normal");
+  const [tmute, setTMute] = useState(false);
+
+  const call = useCall();
+  function disableCallMicrophone() {
+    call!.microphone.disable();
+  }
+  function enableCallMicrophone() {
+    call!.microphone.enable();
+  }
+
+
+  useEffect(() => {
+    if (!user?.id) return;
+
+    (async function run() {
+      const client = StreamChat.getInstance(process.env.NEXT_PUBLIC_STREAM_API_KEY!);
+      setClient(client);
+
+      await client.connectUser(
+        {
+          id: user?.id,
+          name: user?.username || user?.id,
+          image: user?.imageUrl,
+        },
+        tokenProvider
+      )
+
+      const channel = client.channel('livestream', `${meetingId as string}`, {
+        name: 'voice channel',
+      });
+
+      channel.on('message.new', async (event) => {
+        if (event.user?.id != user?.id) {
+          console.log("event mesg", event.user?.id);
+          console.log("event mesg", user?.id);
+          const senderMessage = event.message?.text as string;
+          const senderlanguage = event.message?.language as string;
+          const recieverLanguage = languageRef.current as string;
+          if (senderMessage && senderlanguage && recieverLanguage) {
+            let audio: string | null;
+            const translatedText = await translateTextGroq(senderMessage, senderlanguage, recieverLanguage);
+            if (translatedText) {
+              audio = await convertResponseToAudio(translatedText);
+              if (translatedText && audio) {
+                setVoiceMessages((prev: any) => {
+                  return (
+                    [...prev, { audio, translatedText }]
+                  )
+                });
+
+              }
+            }
+          }
+        }
+        const messageId = event.message?.id;
+        await client.deleteMessage(messageId!, true);
+        console.log('received a new message', event);
+        console.log(`Now have ${channel.state.messages.length} stored in local state`);
+      });
+
+      await channel.watch();
+
+
+      setChannel(channel);
+    })();
+
+    return () => {
+      client?.disconnectUser();
+      setChannel(undefined);
+    }
+
+  }, [user.id]);
+
+  useEffect(() => {
+    if (voiceMessages.length > currentVoice.index && currentVoice.playing == false) {
+      const firstAudio = voiceMessages[currentVoice.index];
+      //console.log("this is first audio ",firstAudio);
+      const audio = new Audio(firstAudio.audio);
+      const displayText = firstAudio.translatedText;
+      //console.log("this is displayText ", displayText);
+      // setIncomingMessage(displayText);
+      audio.addEventListener('ended', () => {
+        URL.revokeObjectURL(firstAudio.audio);
+        setCurrentVoice((obj) => {
+          return ({
+            playing: false,
+            index: obj.index + 1
+          })
+        });
+      });
+      speakingRef.current = true;
+      audio.play();
+      setCurrentVoice((obj) => {
+        return (
+          {
+            playing: true,
+            index: obj.index
+          }
+        )
+      })
+    }
+    else if (voiceMessages.length > 0 && currentVoice.index == voiceMessages.length) {
+      console.log("Now speak");
+      speakingRef.current = false;
+      setCurrentVoice((obj) => {
+        return ({
+          playing: false,
+          index: 0
+        })
+      })
+      setVoiceMessages([])
+    }
+  }, [voiceMessages, currentVoice])
+
+  const startCalling = async () => {
+    if (speakingRef.current == false) {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        mediaStreamRef.current = stream;
+        mediaRecorderRef.current = new MediaRecorder(stream, { mimeType: 'audio/webm' });
+        const currentLanguage = languageRef.current;
+        voiceSocketRef.current = new WebSocket(`wss://api.deepgram.com/v1/listen?model=nova-2-general&punctuate=true&language=${currentLanguage}`, ['token', '0b7b597321b6483dd2e2098526a774944ca94dcf']);
+
+        voiceSocketRef.current.onopen = () => {
+          mediaRecorderRef?.current!?.addEventListener('dataavailable', event => {
+            if (voiceSocketRef.current?.readyState === WebSocket.OPEN) {
+              voiceSocketRef.current.send(event.data);
+            }
+          });
+          mediaRecorderRef.current!.start(250);
+        };
+
+        voiceSocketRef.current.onmessage = async (message) => {
+          const received = JSON.parse(message.data);
+          const transcript = received?.channel?.alternatives[0]?.transcript;
+          if (transcript) {
+            console.log('transcript ', transcript);
+            const response = await channel.sendMessage({
+              text: transcript,
+              language: languageRef.current
+            });
+            console.log("response of send message ", response);
+          }
+        };
+      } catch (error) {
+        console.error('Error accessing media devices.', error);
+      }
+    }
+  };
+
+  const stopCalling = () => {
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+      mediaRecorderRef.current.stop();
+    }
+
+    if (mediaStreamRef.current) {
+      mediaStreamRef.current.getTracks().forEach(track => track.stop());
+    }
+
+    if (voiceSocketRef.current && voiceSocketRef.current.readyState === WebSocket.OPEN) {
+      voiceSocketRef.current.close();
+    }
+
+    mediaRecorderRef.current = null;
+    mediaStreamRef.current = null;
+    voiceSocketRef.current = null;
+
+  };
 
   if (callingState !== CallingState.JOINED) return <Loader />;
 
@@ -65,8 +253,87 @@ const MeetingRoom = () => {
       </div>
       {/* video layout and call controls */}
       <div className="fixed bottom-0 flex w-full items-center justify-center gap-5">
-        <CallControls onLeave={() => router.push(`/`)} />
-
+        {/* <CallControls onLeave={() => router.push(`/`)} /> */}
+        {
+          state == "normal" ?
+            <ToggleAudioPublishingButton />
+            :
+            <div>
+              {tmute ? <Button onClick={() => {
+                disableCallMicrophone();
+                setTMute(false);
+                startCalling();
+              }}>Unmute</Button>
+                :
+                <Button onClick={() => {
+                  setTMute(true);
+                  stopCalling();
+                }}>Mute</Button>}
+            </div>
+        }
+        <ToggleVideoPublishingButton />
+        <CancelCallButton onLeave={() => router.push(`/`)} />
+        <DropdownMenu>
+          <div className="flex items-center">
+            <DropdownMenuTrigger className="cursor-pointer rounded-2xl bg-[#19232d] px-4 py-2 hover:bg-[#4c535b]  ">
+              <LayoutList size={20} className="text-white" />
+            </DropdownMenuTrigger>
+          </div>
+          <DropdownMenuContent className="border-dark-1 bg-dark-1 text-white">
+            {['normal', 'translate'].map((item, index) => (
+              <div key={index}>
+                <DropdownMenuItem
+                  onClick={() => {
+                    if (item == "normal") {
+                      stopCalling();
+                    } else {
+                      disableCallMicrophone();
+                      startCalling();
+                    }
+                    setState(item as "normal" | "translate")
+                  }
+                  }
+                >
+                  {item}
+                </DropdownMenuItem>
+                <DropdownMenuSeparator className="border-dark-1" />
+              </div>
+            ))}
+          </DropdownMenuContent>
+        </DropdownMenu>
+        {state == "translate" && <DropdownMenu>
+          <div className="flex items-center">
+            <DropdownMenuTrigger className="cursor-pointer rounded-2xl bg-[#19232d] px-4 py-2 hover:bg-[#4c535b]  ">
+              <LayoutList size={20} className="text-white" />
+            </DropdownMenuTrigger>
+          </div>
+          <DropdownMenuContent className="border-dark-1 bg-dark-1 text-white">
+            {[
+              {
+                value: "en",
+                label: "English",
+              },
+              {
+                value: "hi",
+                label: "hindi",
+              },
+              {
+                value: "de",
+                label: "german"
+              }].map((item, index) => (
+                <div key={index}>
+                  <DropdownMenuItem
+                    onClick={() =>
+                      languageRef.current = item.value
+                    }
+                  >
+                    {item.label}
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator className="border-dark-1" />
+                </div>
+              ))}
+          </DropdownMenuContent>
+        </DropdownMenu>}
         <DropdownMenu>
           <div className="flex items-center">
             <DropdownMenuTrigger className="cursor-pointer rounded-2xl bg-[#19232d] px-4 py-2 hover:bg-[#4c535b]  ">
@@ -96,7 +363,7 @@ const MeetingRoom = () => {
         </button>
         {!isPersonalRoom && <EndCallButton />}
       </div>
-    </section>
+    </section >
   );
 };
 
