@@ -13,11 +13,10 @@ import { translateTextGroq, translateTextItranslate } from "@/lib/translate";
 import { convertResponseToAudio } from "@/lib/getAudio";
 import { cn } from "@/lib/utils";
 
-const Translate = ({ meetingId, user }: { meetingId: string | string[], user: any }) => {
+const Translate = ({ meetingId, user,language }: { meetingId: string | string[], user: any,language:string }) => {
   const router = useRouter();
   const [client, setClient] = useState<any>();
   const [channel, setChannel] = useState<any>();
-  const [language, setLanguage] = useState<string>('en');
   const [voiceMessages, setVoiceMessages] = useState<any>([]);
   const [currentVoice, setCurrentVoice] = useState({ playing: false, index: 0 });
   const [groq, setGroq] = useState(true);
@@ -72,12 +71,12 @@ const Translate = ({ meetingId, user }: { meetingId: string | string[], user: an
             } else {
               translatedText = await translateTextItranslate(senderMessage, senderlanguage, recieverLanguage);
             }
-            console.log('translatedText',translatedText);
+            console.log('translatedText', translatedText);
             if (translatedText) {
               const audioData = await convertResponseToAudio(translatedText);
               if (translatedText && audioData) {
                 const audio = URL.createObjectURL(audioData);
-                console.log("audioUrl",audio);
+                console.log("audioUrl", audio);
                 setVoiceMessages((prev: any) => {
                   return (
                     [...prev, { audio, translatedText }]
@@ -150,10 +149,7 @@ const Translate = ({ meetingId, user }: { meetingId: string | string[], user: an
     }
   }, [voiceMessages, currentVoice])
 
-  const languageRef = useRef('en');
-  useEffect(()=>{
-    languageRef.current = language;
-  },[language])
+
 
   const startCalling = async () => {
     if (speakingRef.current == false) {
@@ -161,9 +157,8 @@ const Translate = ({ meetingId, user }: { meetingId: string | string[], user: an
         const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
         mediaStreamRef.current = stream;
         mediaRecorderRef.current = new MediaRecorder(stream, { mimeType: 'audio/webm' });
-        const currentLanguage = languageRef.current;
-        voiceSocketRef.current = new WebSocket(`wss://api.deepgram.com/v1/listen?model=nova-2-general&punctuate=true&language=${currentLanguage}`, ['token', '0b7b597321b6483dd2e2098526a774944ca94dcf']);
-
+        voiceSocketRef.current = new WebSocket(`wss://api.deepgram.com/v1/listen?model=nova-2-general&punctuate=true&language=${language}`, ['token', '0b7b597321b6483dd2e2098526a774944ca94dcf']);
+        console.log('languageRef', language);
         voiceSocketRef.current.onopen = () => {
           mediaRecorderRef?.current!?.addEventListener('dataavailable', event => {
             if (voiceSocketRef.current?.readyState === WebSocket.OPEN) {
@@ -178,9 +173,10 @@ const Translate = ({ meetingId, user }: { meetingId: string | string[], user: an
           const transcript = received?.channel?.alternatives[0]?.transcript;
           if (transcript) {
             console.log('transcript ', transcript);
+            console.log("current language", language);
             const response = await channel.sendMessage({
               text: transcript,
-              language: currentLanguage
+              language: language
             });
             console.log("response of send message ", response);
           }
@@ -261,45 +257,6 @@ const Translate = ({ meetingId, user }: { meetingId: string | string[], user: an
           ))}
         </DropdownMenuContent>
       </DropdownMenu>
-      {state == "translate" && <DropdownMenu>
-        <div className="flex items-center">
-          <DropdownMenuTrigger className="cursor-pointer rounded-2xl bg-[#19232d] px-4 py-2 hover:bg-[#4c535b]  ">
-            <Languages size={20} className="text-white" />
-          </DropdownMenuTrigger>
-        </div>
-        <DropdownMenuContent className="border-dark-1 bg-dark-1 text-white">
-          {[
-            {
-              value: "en",
-              label: "English",
-            },
-            {
-              value: "hi",
-              label: "hindi",
-            },
-            {
-              value: "de",
-              label: "german"
-            }].map((item, index) => (
-              <div key={index}>
-                <DropdownMenuItem
-                  className={cn({
-                    "bg-white text-blue-950": (item.value == language),
-                    "": true
-                  })}
-                  onClick={() => {
-                    setLanguage(item.value);
-                  }
-                  }
-                >
-                  {item.label}
-                </DropdownMenuItem>
-                <DropdownMenuSeparator className="border-dark-1" />
-              </div>
-            ))}
-        </DropdownMenuContent>
-      </DropdownMenu>
-      }
       <DropdownMenu>
         <div className="flex items-center">
           <DropdownMenuTrigger className="cursor-pointer rounded-2xl bg-[#19232d] px-4 py-2 hover:bg-[#4c535b]  ">
