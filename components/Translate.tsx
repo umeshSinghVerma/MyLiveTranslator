@@ -228,7 +228,7 @@ const Translate = ({ meetingId, user }: { meetingId: string | string[], user: an
           </>
       }
       <ToggleVideoPublishingButton />
-      <CancelCallButton onLeave={() => router.push(`/`)} />
+      <CancelCallButton onLeave={() => router.push(`/connect`)} />
       <DropdownMenu>
         <div className="flex items-center">
           <DropdownMenuTrigger className="cursor-pointer rounded-2xl bg-[#19232d] px-4 py-2 hover:bg-[#4c535b]  ">
@@ -330,14 +330,6 @@ const Translate = ({ meetingId, user }: { meetingId: string | string[], user: an
           ))}
         </DropdownMenuContent>
       </DropdownMenu>
-      {/* <Button onClick={async ()=>{
-        const audioData = await convertResponseToAudio("Hii I am sonu");
-        if(audioData){
-          const audioUrl = URL.createObjectURL(audioData);
-          const audio = new Audio(audioUrl!);
-          audio.play();
-        }
-      }}>check</Button> */}
 
     </div>
   )

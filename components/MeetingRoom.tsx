@@ -26,6 +26,8 @@ import { cn } from '@/lib/utils';
 import { tokenProvider } from '@/actions/stream.actions';
 import { Button } from './ui/button';
 import Translate from './Translate';
+import { CustomScreenShareButton } from './screenSharing';
+import { CustomRecordCallButton } from './recording';
 
 type CallLayoutType = 'grid' | 'speaker-left' | 'speaker-right';
 
@@ -98,6 +100,8 @@ const MeetingRoom = ({ meetingId, user }: { meetingId: string | string[], user: 
         </div>
         <div className="fixed bottom-5 flex w-full items-center justify-center gap-5">
           <Translate meetingId={meetingId} user={user}/>
+          <CustomScreenShareButton/>
+          <CustomRecordCallButton/>
           <DropdownMenu>
             <div className="flex items-center">
               <DropdownMenuTrigger className="cursor-pointer rounded-2xl bg-[#19232d] px-4 py-2 hover:bg-[#4c535b]  ">
@@ -129,7 +133,7 @@ const MeetingRoom = ({ meetingId, user }: { meetingId: string | string[], user: 
           {!isPersonalRoom && <EndCallButton />}
         </div>
       </section >
-      {showMessages && <div className='w-[30%] min-w-[300px] bg-yellow-1'>
+      {showMessages && <div className='w-[30%] min-w-[300px] bg-yellow-1 h-screen'>
         <Chat client={messageClient}>
           <Channel channel={messageChannel}>
             <Window>

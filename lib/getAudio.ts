@@ -1,14 +1,5 @@
-import axios from "axios";
-
 export const convertResponseToAudio = async (text: string) => {
     try{
-        // const res = await axios.post("/api/audio",{
-        //     message:text
-        // })
-        // console.log('res',res);
-
-        // const audioData = await res.data.blob();
-        // console.log(audioData);
         const options = {
             method: 'POST',
             headers: {
