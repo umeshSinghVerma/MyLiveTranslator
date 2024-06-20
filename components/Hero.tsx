@@ -4,6 +4,8 @@ import { SignOutButton, useUser } from "@clerk/nextjs";
 import Image from "next/image";
 import Link from "next/link";
 import { useState, useEffect } from "react";
+import { Button } from "./ui/button";
+import { convertResponseToAudio } from "@/lib/getAudio";
 export default function Hero() {
     const { isSignedIn } = useUser();
     const [state, setState] = useState(false)
@@ -121,6 +123,14 @@ export default function Hero() {
                             <Link href={isSignedIn ? "/connect/chat" : "/sign-in"} className="px-7 py-3 w-full bg-gray-700 text-gray-200 text-center rounded-md block sm:w-auto">
                                 Chat
                             </Link>
+                            <Button onClick={async () => {
+                                const audioData = await convertResponseToAudio("Hii I am sonu");
+                                if (audioData) {
+                                    const audioUrl = URL.createObjectURL(audioData);
+                                    const audio = new Audio(audioUrl!);
+                                    audio.play();
+                                }
+                            }}>check</Button>
                         </div>
                     </div>
                     <div>

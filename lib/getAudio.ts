@@ -1,25 +1,29 @@
-export const convertResponseToAudio = async (text: string) => {
-    //console.log("text incoming in conversion of audio ",text);
-    const options = {
-        method: 'POST',
-        headers: {
-            'xi-api-key': 'sk_6f11c21aadbd26339f8da001d1c80797fecc245faccdd1da',
-            'Content-Type': 'application/json'
-        },
-        body: `{"text":"${text}","model_id":"eleven_multilingual_v2","voice_settings":{"similarity_boost":1,"stability":1}}`
-    };
+import axios from "axios";
 
-    try {
-        const res = await fetch('https://api.elevenlabs.io/v1/text-to-speech/21m00Tcm4TlvDq8ikWAM/stream', options);
+export const convertResponseToAudio = async (text: string) => {
+    try{
+        // const res = await axios.post("/api/audio",{
+        //     message:text
+        // })
+        // console.log('res',res);
+
+        // const audioData = await res.data.blob();
+        // console.log(audioData);
+        const options = {
+            method: 'POST',
+            headers: {
+                'xi-api-key': 'sk_7b4df1a00e8f54b787763d76f80f748d3a6d0a497554c29c',
+                'Content-Type': 'application/json'
+            },
+            body: `{"text":"${text}","model_id":"eleven_multilingual_v2","voice_settings":{"stability":1,"similarity_boost":1}}`
+        };
+        const res = await fetch('https://api.elevenlabs.io/v1/text-to-speech/21m00Tcm4TlvDq8ikWAM', options);
+        console.log("rs ",res);
         const audioData = await res.blob();
-        //console.log("this is audioData",audioData);
-        const audioUrl = URL.createObjectURL(audioData);
-        //console.log('audio url ', audioUrl);
-        // const audio = new Audio(audioUrl);
-        // audio.play();
-        return audioUrl;
+        console.log('audioData ',audioData);
+        return audioData;
     } catch (error) {
-        //console.log('error has occured in elevenlabs audio conversion',error);
+        console.log('error has occured in elevenlabs audio conversion', error);
     }
     return null;
 };

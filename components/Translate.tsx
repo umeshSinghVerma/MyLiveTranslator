@@ -66,16 +66,18 @@ const Translate = ({ meetingId, user }: { meetingId: string | string[], user: an
           const senderlanguage = event.message?.language as string;
           const recieverLanguage = language as string;
           if (senderMessage && senderlanguage && recieverLanguage) {
-            let audio: string | null;
             let translatedText;
             if (groq) {
               translatedText = await translateTextGroq(senderMessage, senderlanguage, recieverLanguage);
             } else {
               translatedText = await translateTextItranslate(senderMessage, senderlanguage, recieverLanguage);
             }
+            console.log('translatedText',translatedText);
             if (translatedText) {
-              audio = await convertResponseToAudio(translatedText);
-              if (translatedText && audio) {
+              const audioData = await convertResponseToAudio(translatedText);
+              if (translatedText && audioData) {
+                const audio = URL.createObjectURL(audioData);
+                console.log("audioUrl",audio);
                 setVoiceMessages((prev: any) => {
                   return (
                     [...prev, { audio, translatedText }]
@@ -148,13 +150,18 @@ const Translate = ({ meetingId, user }: { meetingId: string | string[], user: an
     }
   }, [voiceMessages, currentVoice])
 
+  const languageRef = useRef('en');
+  useEffect(()=>{
+    languageRef.current = language;
+  },[language])
+
   const startCalling = async () => {
     if (speakingRef.current == false) {
       try {
         const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
         mediaStreamRef.current = stream;
         mediaRecorderRef.current = new MediaRecorder(stream, { mimeType: 'audio/webm' });
-        const currentLanguage = language;
+        const currentLanguage = languageRef.current;
         voiceSocketRef.current = new WebSocket(`wss://api.deepgram.com/v1/listen?model=nova-2-general&punctuate=true&language=${currentLanguage}`, ['token', '0b7b597321b6483dd2e2098526a774944ca94dcf']);
 
         voiceSocketRef.current.onopen = () => {
@@ -173,7 +180,7 @@ const Translate = ({ meetingId, user }: { meetingId: string | string[], user: an
             console.log('transcript ', transcript);
             const response = await channel.sendMessage({
               text: transcript,
-              language: language
+              language: currentLanguage
             });
             console.log("response of send message ", response);
           }
@@ -323,6 +330,14 @@ const Translate = ({ meetingId, user }: { meetingId: string | string[], user: an
           ))}
         </DropdownMenuContent>
       </DropdownMenu>
+      {/* <Button onClick={async ()=>{
+        const audioData = await convertResponseToAudio("Hii I am sonu");
+        if(audioData){
+          const audioUrl = URL.createObjectURL(audioData);
+          const audio = new Audio(audioUrl!);
+          audio.play();
+        }
+      }}>check</Button> */}
 
     </div>
   )
