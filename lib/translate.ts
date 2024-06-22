@@ -37,8 +37,7 @@ export const translateTextGroq = async (message: any, messageLanguage: any, targ
 }
 
 export async function translateTextItranslate(message: string, messageLanguage: string, targetLanguage: string) {
-    const serverUrl = 'https://mylivtranslatorserver.onrender.com'
-    // const serverUrl = 'http://localhost:8080'
+    const serverUrl = process.env.NEXT_PUBLIC_SERVER_URL;
     try {
         const response = await axios.post(`${serverUrl}/translate`, {
             message: message,

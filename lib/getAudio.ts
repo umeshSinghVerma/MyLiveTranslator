@@ -20,7 +20,7 @@ export const convertResponseToAudioFrontend = async (text: string) => {
 };
 export async function convertResponseToAudio(text:string) {
     try {
-        const response = await fetch('http://localhost:8080/getAudio', {
+        const response = await fetch(`${process.env.NEXT_PUBLIC_SERVER_URL}/getAudio`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'

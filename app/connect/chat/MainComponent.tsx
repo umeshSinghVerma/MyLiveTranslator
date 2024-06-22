@@ -142,8 +142,8 @@ const fetchAndPlayAudioHindi = async (text: string): Promise<string> => {
 
 
 
-const serverUrl = 'https://mylivtranslatorserver.onrender.com'
-// const serverUrl = 'http://localhost:8080'
+const serverUrl = process.env.NEXT_PUBLIC_SERVER_URL;
+// const serverUrl = 'https://mylivtranslatorserver.onrender.com'
 export default function MainComponent() {
     const user = useUser();
     const username = user?.user?.username;

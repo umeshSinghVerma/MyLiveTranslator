@@ -33,8 +33,9 @@ const Translate = ({ meetingId, user, language }: { meetingId: string | string[]
   const [nowSpeak, setNowSpeak] = useState(false);
   const [currentlySpeaking, setCurrenlySpeaking] = useState<any>([]);
   const [yourSpeech, setYourSpeech] = useState("");
+  const [remoteSpeech, setRemoteSpeech] = useState<{ user: string | null, text: string | null }>({ user: null, text: null })
 
-
+  console.log("remote speech ", remoteSpeech);
   const call = useCall();
   function disableCallMicrophone() {
     call!.microphone.disable();
@@ -80,8 +81,6 @@ const Translate = ({ meetingId, user, language }: { meetingId: string | string[]
 
       channel?.on('message.new', async (event) => {
         if (event.user?.id != user?.id) {
-          // console.log("event mesg", event.user?.id);
-          // console.log("event mesg", user?.id);
           const senderMessage = event.message?.text as string;
           const senderlanguage = event.message?.language as string;
           const recieverLanguage = language as string;
@@ -98,10 +97,10 @@ const Translate = ({ meetingId, user, language }: { meetingId: string | string[]
               const audioData = await convertResponseToAudio(translatedText);
               if (translatedText && audioData) {
                 const audio = URL.createObjectURL(audioData);
-                // console.log("audioUrl", audio);
+                console.log("audio ",audio);
                 setVoiceMessages((prev: any) => {
                   return (
-                    [...prev, { audio, translatedText }]
+                    [...prev, { audio, translatedText, username: event.user?.name }]
                   )
                 });
 
@@ -110,7 +109,6 @@ const Translate = ({ meetingId, user, language }: { meetingId: string | string[]
           }
           if (isSpeaking == true && event.user?.name) {
             console.log(`${event.user?.name} is speaking currently`)
-            const username = event.user?.name || "" as string;
             setCurrenlySpeaking((prev: any) => {
               if (prev.includes(event.user?.name)) {
                 return [...prev]
@@ -152,6 +150,7 @@ const Translate = ({ meetingId, user, language }: { meetingId: string | string[]
       setNowSpeak(false);
       const audio = new Audio(firstAudio.audio);
       const displayText = firstAudio.translatedText;
+      setRemoteSpeech({ user: firstAudio.username, text: firstAudio.translatedText })
       audio.addEventListener('ended', () => {
         URL.revokeObjectURL(firstAudio.audio);
         setCurrentVoice((obj) => {
@@ -182,6 +181,7 @@ const Translate = ({ meetingId, user, language }: { meetingId: string | string[]
           index: 0
         })
       })
+      setRemoteSpeech({ user: null, text: null });
       setVoiceMessages([])
     }
   }, [voiceMessages, currentVoice])
@@ -269,6 +269,20 @@ const Translate = ({ meetingId, user, language }: { meetingId: string | string[]
       }
       }
       />
+      {remoteSpeech.user && remoteSpeech.text &&
+        <div className="fixed bottom-[5rem] left-0 right-0 flex justify-center">
+          <div className="flex bg-[#393f49cc] text-white px-3">
+            <span>
+              {remoteSpeech.user} :
+            </span>
+            <span>
+              {remoteSpeech.text}
+            </span>
+          </div>
+        </div>
+      }
+
+
       <DropdownMenu>
         <div className="flex items-center">
           <DropdownMenuTrigger className="cursor-pointer rounded-2xl bg-[#19232d] px-4 py-2 hover:bg-[#4c535b]  ">
