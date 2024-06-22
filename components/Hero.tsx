@@ -4,12 +4,10 @@ import { SignOutButton, useUser } from "@clerk/nextjs";
 import Image from "next/image";
 import Link from "next/link";
 import { useState, useEffect } from "react";
-import { Button } from "./ui/button";
-import { convertResponseToAudio } from "@/lib/getAudio";
+
 export default function Hero() {
     const { isSignedIn } = useUser();
-    const [state, setState] = useState(false)
-
+    const [state, setState] = useState(false);
     // Replace # paths with your paths
     const navigation = [
         { title: "Features", path: "#features" },
@@ -120,17 +118,9 @@ export default function Hero() {
                             <Link href={isSignedIn ? "/connect" : "/sign-in"} className="px-7 py-3 w-full bg-white text-gray-800 text-center rounded-md shadow-md block sm:w-auto">
                                 Connect
                             </Link>
-                            <Link href={isSignedIn ? "/connect/chat" : "/sign-in"} className="px-7 py-3 w-full bg-gray-700 text-gray-200 text-center rounded-md block sm:w-auto">
+                            {/* <Link href={isSignedIn ? "/connect/chat" : "/sign-in"} className="px-7 py-3 w-full bg-gray-700 text-gray-200 text-center rounded-md block sm:w-auto">
                                 Chat
-                            </Link>
-                            <Button onClick={async () => {
-                                const audioData = await convertResponseToAudio("Hii I am sonu");
-                                if (audioData) {
-                                    const audioUrl = URL.createObjectURL(audioData);
-                                    const audio = new Audio(audioUrl!);
-                                    audio.play();
-                                }
-                            }}>check</Button>
+                            </Link> */}
                         </div>
                     </div>
                     <div>

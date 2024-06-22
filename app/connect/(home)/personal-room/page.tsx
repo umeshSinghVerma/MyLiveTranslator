@@ -33,8 +33,6 @@ const PersonalRoom = () => {
   const client = useStreamVideoClient();
   const { toast } = useToast();
 
-  console.log("this is user ",user);
-
   const meetingId = user?.id;
 
   const { call } = useGetCallById(meetingId!);
@@ -55,8 +53,7 @@ const PersonalRoom = () => {
     router.push(`/connect/meeting/${meetingId}?personal=true`);
   };
 
-  const meetingLink = `${process.env.NEXT_PUBLIC_BASE_URL}/meeting/${meetingId}?personal=true`;
-  console.log("user",user);
+  const meetingLink = `${process.env.NEXT_PUBLIC_BASE_URL}/connect/meeting/${meetingId}?personal=true`;
 
   return (
     <section className="flex size-full flex-col gap-10 text-white">

@@ -1,6 +1,6 @@
 'use client';
 
-import { CancelCallButton, ToggleAudioPublishingButton, ToggleVideoPublishingButton, useCall } from "@stream-io/video-react-sdk";
+import { CancelCallButton, ToggleAudioPublishingButton, ToggleVideoPublishingButton, useCall, useCallStateHooks } from "@stream-io/video-react-sdk";
 import { Button } from "./ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator } from "./ui/dropdown-menu";
 import { DropdownMenuTrigger } from "@radix-ui/react-dropdown-menu";
@@ -13,7 +13,7 @@ import { translateTextGroq, translateTextItranslate } from "@/lib/translate";
 import { convertResponseToAudio } from "@/lib/getAudio";
 import { cn } from "@/lib/utils";
 
-const Translate = ({ meetingId, user,language }: { meetingId: string | string[], user: any,language:string }) => {
+const Translate = ({ meetingId, user, language }: { meetingId: string | string[], user: any, language: string }) => {
   const router = useRouter();
   const [client, setClient] = useState<any>();
   const [channel, setChannel] = useState<any>();
@@ -21,12 +21,19 @@ const Translate = ({ meetingId, user,language }: { meetingId: string | string[],
   const [currentVoice, setCurrentVoice] = useState({ playing: false, index: 0 });
   const [groq, setGroq] = useState(true);
 
+  const { useMicrophoneState } = useCallStateHooks();
+  const { isSpeakingWhileMuted } = useMicrophoneState();
+
   const speakingRef = useRef(false);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const mediaStreamRef = useRef<MediaStream | null>(null);
   const voiceSocketRef = useRef<WebSocket | null>(null);
   const [state, setState] = useState<'normal' | "translate">("normal");
   const [tmute, setTMute] = useState(false);
+  const [nowSpeak, setNowSpeak] = useState(false);
+  const [currentlySpeaking, setCurrenlySpeaking] = useState<any>([]);
+  const [yourSpeech, setYourSpeech] = useState("");
+
 
   const call = useCall();
   function disableCallMicrophone() {
@@ -35,6 +42,20 @@ const Translate = ({ meetingId, user,language }: { meetingId: string | string[],
   function enableCallMicrophone() {
     call!.microphone.enable();
   }
+
+  async function sendTalkingMessage(val: boolean) {
+    const response = await channel?.sendMessage({
+      isSpeaking: val,
+    });
+  }
+
+  useEffect(() => {
+    if (yourSpeech == "") {
+      sendTalkingMessage(false);
+    } else {
+      sendTalkingMessage(true);
+    }
+  }, [yourSpeech])
 
 
   useEffect(() => {
@@ -57,13 +78,14 @@ const Translate = ({ meetingId, user,language }: { meetingId: string | string[],
         name: 'voice channel',
       });
 
-      channel.on('message.new', async (event) => {
+      channel?.on('message.new', async (event) => {
         if (event.user?.id != user?.id) {
-          console.log("event mesg", event.user?.id);
-          console.log("event mesg", user?.id);
+          // console.log("event mesg", event.user?.id);
+          // console.log("event mesg", user?.id);
           const senderMessage = event.message?.text as string;
           const senderlanguage = event.message?.language as string;
           const recieverLanguage = language as string;
+          const isSpeaking = event.message?.isSpeaking as boolean | null;
           if (senderMessage && senderlanguage && recieverLanguage) {
             let translatedText;
             if (groq) {
@@ -76,7 +98,7 @@ const Translate = ({ meetingId, user,language }: { meetingId: string | string[],
               const audioData = await convertResponseToAudio(translatedText);
               if (translatedText && audioData) {
                 const audio = URL.createObjectURL(audioData);
-                console.log("audioUrl", audio);
+                // console.log("audioUrl", audio);
                 setVoiceMessages((prev: any) => {
                   return (
                     [...prev, { audio, translatedText }]
@@ -86,16 +108,32 @@ const Translate = ({ meetingId, user,language }: { meetingId: string | string[],
               }
             }
           }
+          if (isSpeaking == true && event.user?.name) {
+            console.log(`${event.user?.name} is speaking currently`)
+            const username = event.user?.name || "" as string;
+            setCurrenlySpeaking((prev: any) => {
+              if (prev.includes(event.user?.name)) {
+                return [...prev]
+              } else {
+                return [...prev, event.user?.name]
+              }
+            })
+          }
+          if (isSpeaking == false) {
+            const filteredCurrentlySpeaking = currentlySpeaking.filter((person: any) => {
+              return person != event.user?.name
+            })
+            setCurrenlySpeaking(filteredCurrentlySpeaking);
+          }
         }
         const messageId = event.message?.id;
         if (user?.id == event.message?.user?.id) {
           await client.deleteMessage(messageId!, true);
         }
-        console.log('received a new message', event);
-        console.log(`Now have ${channel.state.messages.length} stored in local state`);
+        // console.log('received a new message', event);
       });
 
-      await channel.watch();
+      await channel?.watch();
 
 
       setChannel(channel);
@@ -111,11 +149,9 @@ const Translate = ({ meetingId, user,language }: { meetingId: string | string[],
   useEffect(() => {
     if (voiceMessages.length > currentVoice.index && currentVoice.playing == false) {
       const firstAudio = voiceMessages[currentVoice.index];
-      //console.log("this is first audio ",firstAudio);
+      setNowSpeak(false);
       const audio = new Audio(firstAudio.audio);
       const displayText = firstAudio.translatedText;
-      //console.log("this is displayText ", displayText);
-      // setIncomingMessage(displayText);
       audio.addEventListener('ended', () => {
         URL.revokeObjectURL(firstAudio.audio);
         setCurrentVoice((obj) => {
@@ -138,6 +174,7 @@ const Translate = ({ meetingId, user,language }: { meetingId: string | string[],
     }
     else if (voiceMessages.length > 0 && currentVoice.index == voiceMessages.length) {
       console.log("Now speak");
+      setNowSpeak(true);
       speakingRef.current = false;
       setCurrentVoice((obj) => {
         return ({
@@ -168,13 +205,15 @@ const Translate = ({ meetingId, user,language }: { meetingId: string | string[],
           mediaRecorderRef.current!.start(250);
         };
 
+
         voiceSocketRef.current.onmessage = async (message) => {
           const received = JSON.parse(message.data);
           const transcript = received?.channel?.alternatives[0]?.transcript;
+          setYourSpeech(transcript);
           if (transcript) {
             console.log('transcript ', transcript);
             console.log("current language", language);
-            const response = await channel.sendMessage({
+            const response = await channel?.sendMessage({
               text: transcript,
               language: language
             });
@@ -224,7 +263,12 @@ const Translate = ({ meetingId, user,language }: { meetingId: string | string[],
           </>
       }
       <ToggleVideoPublishingButton />
-      <CancelCallButton onLeave={() => router.push(`/connect`)} />
+      <CancelCallButton onLeave={() => {
+        stopCalling();
+        router.push(`/connect`)
+      }
+      }
+      />
       <DropdownMenu>
         <div className="flex items-center">
           <DropdownMenuTrigger className="cursor-pointer rounded-2xl bg-[#19232d] px-4 py-2 hover:bg-[#4c535b]  ">
@@ -287,6 +331,26 @@ const Translate = ({ meetingId, user,language }: { meetingId: string | string[],
           ))}
         </DropdownMenuContent>
       </DropdownMenu>
+
+      {
+        currentlySpeaking && currentlySpeaking.length > 0 &&
+        <div className="fixed top-1 right-1 bg-sky-700 text-white flex flex-col max-h-24 p-2 rounded overflow-y-auto">
+          {
+            currentlySpeaking.map((person: any, key: number) => {
+              return (
+                <div key={key} className="p-2">{person} is speaking</div>
+              )
+            })
+          }
+
+        </div>
+      }
+      {
+        nowSpeak &&
+        <div className="bg-green-700 fixed top-1 left-1 text-white p-2 rounded">
+          You can Speak now
+        </div>
+      }
 
     </div>
   )
