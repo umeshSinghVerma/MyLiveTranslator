@@ -18,14 +18,14 @@ export const convertResponseToAudioFrontend = async (text: string) => {
     }
     return null;
 };
-export async function convertResponseToAudio(text:string) {
+export async function convertResponseToAudio(text:string,senderGender:string) {
     try {
         const response = await fetch(`${process.env.NEXT_PUBLIC_SERVER_URL}/getAudio`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
             },
-            body: JSON.stringify({text})
+            body: JSON.stringify({text,senderGender})
         });
         if (!response.ok) {
             throw new Error('Network response was not ok');
@@ -84,3 +84,29 @@ export async function speak() {
             console.log('\nError: ' + error.message);
         });
 }
+
+// const textToSpeech = async (language: string, text: string) => {
+//     const speechSynthesis = window.speechSynthesis;
+//     const voice = speechSynthesis.getVoices().find((voice) => voice.lang === language);
+//     if (!voice) {
+//       throw new Error(`No voice found for language ${language}`);
+//     }
+  
+//     const utterance = new SpeechSynthesisUtterance(text);
+//     utterance.voice = voice;
+//     utterance.lang = language;
+  
+//     const audioData = await new Promise((resolve, reject) => {
+//       utterance.onend = () => {
+//         const audioBlob = new Blob([utterance.audioBuffer], { type: 'audio/wav' });
+//         const audioUrl = URL.createObjectURL(audioBlob);
+//         resolve(audioUrl);
+//       };
+//       utterance.onerror = (event) => {
+//         reject(event.error);
+//       };
+//       speechSynthesis.speak(utterance);
+//     });
+  
+//     return audioData;
+//   };

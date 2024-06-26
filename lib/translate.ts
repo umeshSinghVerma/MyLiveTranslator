@@ -56,47 +56,22 @@ export async function translateTextItranslate(message: string, messageLanguage: 
         return null;
     }
 }
-export async function translateTextItranslatet(message: string, messageLanguage: string, targetLanguage: string) {
+export async function translateTextOpenAi(message: string, messageLanguage: string, targetLanguage: string) {
     try {
-        fetch("https://web-api.itranslateapp.com/v3/texts/translate", {
-            method: "POST",
-            headers: {
-                "Accept": "application/json",
-                "Accept-Encoding": "gzip, deflate, br, zstd",
-                "Accept-Language": "en-US,en;q=0.9,hi;q=0.8,he;q=0.7",
-                "Api-Key": "d2aefeac9dc661bc98eebd6cc12f0b82",
-                "Content-Type": "application/json",
-                "Origin": "https://itranslate.com",
-                "Referer": "https://itranslate.com/",
-                "Sec-Ch-Ua": "\"Google Chrome\";v=\"125\", \"Chromium\";v=\"125\", \"Not.A/Brand\";v=\"24\"",
-                "Sec-Ch-Ua-Mobile": "?1",
-                "Sec-Ch-Ua-Platform": "\"Android\"",
-                "Sec-Fetch-Dest": "empty",
-                "Sec-Fetch-Mode": "cors",
-                "Sec-Fetch-Site": "cross-site",
-                "User-Agent": "Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA58N) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Mobile Safari/537.36"
-            },
-            body: JSON.stringify({
-                source: {
-                    dialect: messageLanguage,
-                    text: message,
-                    with: ["synonyms"]
-                },
-                target: {
-                    dialect: targetLanguage
-                }
-            })
+        const response = await axios.post(`/api/openAi`, {
+            text: message,
+            targetLanguage: targetLanguage,
+            currentLanguage: messageLanguage
         })
-            .then(response => response.json())
-            .then((data) => {
-                const translatedText = data.target.text;
-                return translatedText;
-            }
-            )
-            .catch(error => {
-                return "";
-            });
-    } catch (error) {
-        return "";
+        if (response.status == 200) {
+            console.log("response ", response);
+            return response.data.message;
+        } else {
+            return "null";
+        }
+
+    } catch (e) {
+        ////console.log('error during translation', e);
+        return null;
     }
-} 
+}

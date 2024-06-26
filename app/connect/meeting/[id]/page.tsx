@@ -20,6 +20,7 @@ const MeetingPage = () => {
     value: "en",
     label: "English",
   });
+  const [gender,setGender]=useState<"Male"|"Female">("Male");
 
   if (!isLoaded || isCallLoading) return <Loader />;
 
@@ -40,9 +41,9 @@ const MeetingPage = () => {
         <StreamTheme>
 
           {!isSetupComplete ? (
-            <MeetingSetup language={language} setLanguage={setLanguage} setIsSetupComplete={setIsSetupComplete} />
+            <MeetingSetup language={language} setLanguage={setLanguage} gender={gender} setGender={setGender} setIsSetupComplete={setIsSetupComplete} />
           ) : (
-            <MeetingRoom meetingId={id} user={user} language={language.value} />
+            <MeetingRoom meetingId={id} user={user} language={language.value} gender={gender}/>
           )}
         </StreamTheme>
       </StreamCall>

@@ -1,28 +1,30 @@
 'use client';
 
-import { CancelCallButton, ToggleAudioPublishingButton, ToggleVideoPublishingButton, useCall, useCallStateHooks } from "@stream-io/video-react-sdk";
+import { CancelCallButton, ToggleAudioPublishingButton, ToggleVideoPublishingButton, useCall } from "@stream-io/video-react-sdk";
 import { Button } from "./ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator } from "./ui/dropdown-menu";
 import { DropdownMenuTrigger } from "@radix-ui/react-dropdown-menu";
-import { Languages, LayoutList, MicIcon, MicOffIcon, Settings, AtomIcon } from "lucide-react";
+import { MicIcon, MicOffIcon, Settings, AtomIcon } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { StreamChat } from "stream-chat";
 import { tokenProvider } from "@/actions/stream.actions";
-import { translateTextGroq, translateTextItranslate } from "@/lib/translate";
+import { translateTextGroq, translateTextItranslate, translateTextOpenAi } from "@/lib/translate";
 import { convertResponseToAudio } from "@/lib/getAudio";
 import { cn } from "@/lib/utils";
 
-const Translate = ({ meetingId, user, language }: { meetingId: string | string[], user: any, language: string }) => {
+const Translate = ({ meetingId, user, language, gender }: { meetingId: string | string[], user: any, language: string, gender: string }) => {
   const router = useRouter();
   const [client, setClient] = useState<any>();
   const [channel, setChannel] = useState<any>();
   const [voiceMessages, setVoiceMessages] = useState<any>([]);
   const [currentVoice, setCurrentVoice] = useState({ playing: false, index: 0 });
-  const [groq, setGroq] = useState(true);
+  const [translateMode, setTranslateMode] = useState<"OpenAI" | "iTranslate" | "Groq">('iTranslate');
+  const translateModeRef = useRef<"OpenAI" | "iTranslate" | "Groq">(translateMode);
+  useEffect(() => {
+    translateModeRef.current = translateMode;
+  }, [translateMode]);
 
-  const { useMicrophoneState } = useCallStateHooks();
-  const { isSpeakingWhileMuted } = useMicrophoneState();
 
   const speakingRef = useRef(false);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
@@ -35,7 +37,6 @@ const Translate = ({ meetingId, user, language }: { meetingId: string | string[]
   const [yourSpeech, setYourSpeech] = useState("");
   const [remoteSpeech, setRemoteSpeech] = useState<{ user: string | null, text: string | null }>({ user: null, text: null })
 
-  console.log("remote speech ", remoteSpeech);
   const call = useCall();
   function disableCallMicrophone() {
     call!.microphone.disable();
@@ -57,6 +58,12 @@ const Translate = ({ meetingId, user, language }: { meetingId: string | string[]
       sendTalkingMessage(true);
     }
   }, [yourSpeech])
+
+  useEffect(() => {
+    if (state == "normal") {
+      setNowSpeak(false);
+    }
+  }, [state]);
 
 
   useEffect(() => {
@@ -81,23 +88,28 @@ const Translate = ({ meetingId, user, language }: { meetingId: string | string[]
 
       channel?.on('message.new', async (event) => {
         if (event.user?.id != user?.id) {
+          console.log("message", event.message);
           const senderMessage = event.message?.text as string;
           const senderlanguage = event.message?.language as string;
+          const senderGender = event.message?.gender as string;
           const recieverLanguage = language as string;
           const isSpeaking = event.message?.isSpeaking as boolean | null;
           if (senderMessage && senderlanguage && recieverLanguage) {
             let translatedText;
-            if (groq) {
+            if (translateModeRef.current == "Groq") {
+              console.log("groq translation");
               translatedText = await translateTextGroq(senderMessage, senderlanguage, recieverLanguage);
+            } else if (translateModeRef.current == "OpenAI") {
+              console.log("openai translation");
+              translatedText = await translateTextOpenAi(senderMessage, senderlanguage, recieverLanguage);
             } else {
               translatedText = await translateTextItranslate(senderMessage, senderlanguage, recieverLanguage);
             }
-            console.log('translatedText', translatedText);
             if (translatedText) {
-              const audioData = await convertResponseToAudio(translatedText);
+              const audioData = await convertResponseToAudio(translatedText, senderGender);
               if (translatedText && audioData) {
                 const audio = URL.createObjectURL(audioData);
-                console.log("audio ",audio);
+                console.log("audio ", audio);
                 setVoiceMessages((prev: any) => {
                   return (
                     [...prev, { audio, translatedText, username: event.user?.name }]
@@ -215,7 +227,8 @@ const Translate = ({ meetingId, user, language }: { meetingId: string | string[]
             console.log("current language", language);
             const response = await channel?.sendMessage({
               text: transcript,
-              language: language
+              language: language,
+              gender: gender
             });
             console.log("response of send message ", response);
           }
@@ -242,6 +255,7 @@ const Translate = ({ meetingId, user, language }: { meetingId: string | string[]
     mediaRecorderRef.current = null;
     mediaStreamRef.current = null;
     voiceSocketRef.current = null;
+    sendTalkingMessage(false);
   };
   return (
     <div className="flex gap-3">
@@ -269,18 +283,30 @@ const Translate = ({ meetingId, user, language }: { meetingId: string | string[]
       }
       }
       />
-      {remoteSpeech.user && remoteSpeech.text &&
-        <div className="fixed bottom-[5rem] left-0 right-0 flex justify-center">
-          <div className="flex bg-[#393f49cc] text-white px-3">
+      <div className="fixed bottom-[5rem] left-0 right-0 flex justify-center">
+        {
+          yourSpeech &&
+          <div className="flex justify-center bg-[#393f49cc] text-white px-3 w-full">
             <span>
-              {remoteSpeech.user} :
+              {user.username} : 
+            </span>
+            <span>
+              {yourSpeech}
+            </span>
+          </div>
+        }
+        {
+        remoteSpeech.user && remoteSpeech.text &&
+          <div className="flex bg-[#393f49cc] justify-center text-white px-3 w-full">
+            <span>
+              {remoteSpeech.user} : 
             </span>
             <span>
               {remoteSpeech.text}
             </span>
           </div>
-        </div>
-      }
+        }
+      </div>
 
 
       <DropdownMenu>
@@ -322,19 +348,15 @@ const Translate = ({ meetingId, user, language }: { meetingId: string | string[]
           </DropdownMenuTrigger>
         </div>
         <DropdownMenuContent className="border-dark-1 bg-dark-1 text-white">
-          {['groq', 'iTranslate'].map((item, index) => (
+          {["OpenAI", "Groq", "iTranslate"].map((item, index) => (
             <div key={index}>
               <DropdownMenuItem
                 className={cn({
-                  "bg-white text-blue-950": (item == "iTranslate" && groq == false) || (item == "groq" && groq == true),
+                  "bg-white text-blue-950": (item == translateMode),
                   "": true
                 })}
                 onClick={() => {
-                  if (item == 'groq') {
-                    setGroq(true)
-                  } else {
-                    setGroq(false);
-                  }
+                  setTranslateMode(item as "OpenAI" | "Groq" | "iTranslate")
                 }
                 }
               >

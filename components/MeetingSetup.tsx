@@ -17,11 +17,15 @@ import { Languages } from 'lucide-react';
 const MeetingSetup = ({
   setIsSetupComplete,
   language,
-  setLanguage
+  setLanguage,
+  gender,
+  setGender
 }: {
   setIsSetupComplete: (value: boolean) => void;
   language: any,
-  setLanguage: any
+  setLanguage: any,
+  gender: string,
+  setGender: any
 }) => {
   // https://getstream.io/video/docs/react/guides/call-and-participant-state/#call-state
   const { useCallEndedAt, useCallStartsAt } = useCallStateHooks();
@@ -81,45 +85,70 @@ const MeetingSetup = ({
           Join with mic and camera off
         </label>
         <DeviceSettings />
-      <DropdownMenu>
-        <div className="flex items-center">
-          <DropdownMenuTrigger className="cursor-pointer rounded bg-[#19232d] px-4 py-2 hover:bg-[#4c535b] outline-none ">
-            {/* <Languages size={20} className="text-white" /> */}
-            {language.label}
-          </DropdownMenuTrigger>
-        </div>
-        <DropdownMenuContent className="border-dark-1 bg-dark-1 text-white">
-          {[
-            {
-              value: "en",
-              label: "English",
-            },
-            {
-              value: "hi",
-              label: "hindi",
-            },
-            {
-              value: "de",
-              label: "german"
-            }].map((item, index) => (
-              <div key={index}>
-                <DropdownMenuItem
-                  className={cn({
-                    "bg-white text-blue-950": (item.value == language),
-                    "": true
-                  })}
-                  onClick={() => {
-                    setLanguage(item);
-                  }
-                  }
-                >
-                  {item.label}
-                </DropdownMenuItem>
-                <DropdownMenuSeparator className="border-dark-1" />
-              </div>
-            ))}
-        </DropdownMenuContent>
-      </DropdownMenu>
+        <DropdownMenu>
+          <div className="flex items-center">
+            <DropdownMenuTrigger className="cursor-pointer rounded bg-[#19232d] px-4 py-2 hover:bg-[#4c535b] outline-none ">
+              {language.label}
+            </DropdownMenuTrigger>
+          </div>
+          <DropdownMenuContent className="border-dark-1 bg-dark-1 text-white">
+            {[
+              {
+                value: "en",
+                label: "English",
+              },
+              {
+                value: "hi",
+                label: "hindi",
+              },
+              {
+                value: "de",
+                label: "german"
+              }].map((item, index) => (
+                <div key={index}>
+                  <DropdownMenuItem
+                    className={cn({
+                      "bg-white text-blue-950": (item.value == language),
+                      "": true
+                    })}
+                    onClick={() => {
+                      setLanguage(item);
+                    }
+                    }
+                  >
+                    {item.label}
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator className="border-dark-1" />
+                </div>
+              ))}
+          </DropdownMenuContent>
+        </DropdownMenu>
+        <DropdownMenu>
+          <div className="flex items-center">
+            <DropdownMenuTrigger className="cursor-pointer rounded bg-[#19232d] px-4 py-2 hover:bg-[#4c535b] outline-none ">
+              {gender}
+            </DropdownMenuTrigger>
+          </div>
+          <DropdownMenuContent className="border-dark-1 bg-dark-1 text-white">
+            {["Male","Female"].map((item, index) => (
+                <div key={index}>
+                  <DropdownMenuItem
+                    className={cn({
+                      "bg-white text-blue-950": (item==gender ),
+                      "": true
+                    })}
+                    onClick={() => {
+                      setGender(item);
+                    }
+                    }
+                  >
+                    {item}
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator className="border-dark-1" />
+                </div>
+              ))}
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
       <Button
         className="rounded-md bg-green-500 px-4 py-2.5"
