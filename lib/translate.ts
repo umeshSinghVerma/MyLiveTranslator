@@ -58,7 +58,7 @@ export async function translateTextItranslate(message: string, messageLanguage: 
 }
 export async function translateTextOpenAi(message: string, messageLanguage: string, targetLanguage: string) {
     try {
-        const response = await axios.post(`/api/openAi`, {
+        const response = await axios.post(`${process.env.NEXT_PUBLIC_FRONTEND_URL}/api/openAi`, {
             text: message,
             targetLanguage: targetLanguage,
             currentLanguage: messageLanguage
