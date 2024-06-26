@@ -94,17 +94,39 @@ const MeetingSetup = ({
           <DropdownMenuContent className="border-dark-1 bg-dark-1 text-white">
             {[
               {
-                value: "en",
-                label: "English",
+                "value": "en",
+                "label": "English"
               },
               {
-                value: "hi",
-                label: "hindi",
+                "value": "hi",
+                "label": "Hindi"
               },
               {
-                value: "de",
-                label: "german"
-              }].map((item, index) => (
+                "value": "de",
+                "label": "German"
+              },
+              {
+                "value": "fr",
+                "label": "French"
+              },
+              {
+                "value": "es",
+                "label": "Spanish"
+              },
+              {
+                "value": "uk",
+                "label": "Ukrainian"
+              },
+              {
+                "value": "tr",
+                "label": "Turkish"
+              },
+              {
+                "value": "ru",
+                "label": "Russian"
+              }
+            ]
+              .map((item, index) => (
                 <div key={index}>
                   <DropdownMenuItem
                     className={cn({
@@ -130,23 +152,23 @@ const MeetingSetup = ({
             </DropdownMenuTrigger>
           </div>
           <DropdownMenuContent className="border-dark-1 bg-dark-1 text-white">
-            {["Male","Female"].map((item, index) => (
-                <div key={index}>
-                  <DropdownMenuItem
-                    className={cn({
-                      "bg-white text-blue-950": (item==gender ),
-                      "": true
-                    })}
-                    onClick={() => {
-                      setGender(item);
-                    }
-                    }
-                  >
-                    {item}
-                  </DropdownMenuItem>
-                  <DropdownMenuSeparator className="border-dark-1" />
-                </div>
-              ))}
+            {["Male", "Female"].map((item, index) => (
+              <div key={index}>
+                <DropdownMenuItem
+                  className={cn({
+                    "bg-white text-blue-950": (item == gender),
+                    "": true
+                  })}
+                  onClick={() => {
+                    setGender(item);
+                  }
+                  }
+                >
+                  {item}
+                </DropdownMenuItem>
+                <DropdownMenuSeparator className="border-dark-1" />
+              </div>
+            ))}
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
