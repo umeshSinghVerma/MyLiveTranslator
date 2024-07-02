@@ -1,14 +1,14 @@
-export const convertResponseToAudioFrontend = async (text: string) => {
+export const convertResponseToAudio = async (text: string,senderGender:string) => {
     try {
         const options = {
             method: 'POST',
             headers: {
-                'xi-api-key': 'sk_7b4df1a00e8f54b787763d76f80f748d3a6d0a497554c29c',
+                'xi-api-key': 'sk_f51a24e798fc5cc1abcea37f5fd8d064984698148bdfe3c2',
                 'Content-Type': 'application/json'
             },
             body: `{"text":"${text}","model_id":"eleven_multilingual_v2","voice_settings":{"stability":1,"similarity_boost":1}}`
         };
-        const res = await fetch('https://api.elevenlabs.io/v1/text-to-speech/21m00Tcm4TlvDq8ikWAM', options);
+        const res = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${senderGender=="Male"?"zcAOhNBS3c14rBihAFp1":"21m00Tcm4TlvDq8ikWAM"}`, options);
         console.log("rs ", res);
         const audioData = await res.blob();
         console.log('audioData ', audioData);
@@ -18,7 +18,7 @@ export const convertResponseToAudioFrontend = async (text: string) => {
     }
     return null;
 };
-export async function convertResponseToAudio(text:string,senderGender:string) {
+export async function convertResponseToAudiof(text:string,senderGender:string) {
     try {
         const response = await fetch(`${process.env.NEXT_PUBLIC_SERVER_URL}/getAudio`, {
             method: 'POST',
