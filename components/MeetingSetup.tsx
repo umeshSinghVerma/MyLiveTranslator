@@ -94,36 +94,44 @@ const MeetingSetup = ({
           <DropdownMenuContent className="border-dark-1 bg-dark-1 text-white">
             {[
               {
-                "value": "en",
-                "label": "English"
+                value: "en",
+                label: "English",
+                locale: "en-US"
               },
               {
-                "value": "hi",
-                "label": "Hindi"
+                value: "hi",
+                label: "Hindi",
+                locale: "hi-IN"
               },
               {
-                "value": "de",
-                "label": "German"
+                value: "de",
+                label: "German",
+                locale: "de-DE"
               },
               {
-                "value": "fr",
-                "label": "French"
+                value: "fr",
+                label: "French",
+                locale: "fr-FR"
               },
               {
-                "value": "es",
-                "label": "Spanish"
+                value: "es",
+                label: "Spanish",
+                locale: "es-ES"
               },
               {
-                "value": "uk",
-                "label": "Ukrainian"
+                value: "uk",
+                label: "Ukrainian",
+                locale: "uk-UA"
               },
               {
-                "value": "tr",
-                "label": "Turkish"
+                value: "tr",
+                label: "Turkish",
+                locale: "tr-TR"
               },
               {
-                "value": "ru",
-                "label": "Russian"
+                value: "ru",
+                label: "Russian",
+                locale: "ru-RU"
               }
             ]
               .map((item, index) => (

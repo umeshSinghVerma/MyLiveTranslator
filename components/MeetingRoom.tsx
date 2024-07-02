@@ -31,7 +31,7 @@ import { CustomRecordCallButton } from './recording';
 
 type CallLayoutType = 'grid' | 'speaker-left' | 'speaker-right';
 
-const MeetingRoom = ({ meetingId, user,language,gender }: { meetingId: string | string[], user: any,language:string,gender:string }) => {
+const MeetingRoom = ({ meetingId, user,language,gender,locale }: { meetingId: string | string[], user: any,language:string,gender:string,locale:string }) => {
   const searchParams = useSearchParams();
   const isPersonalRoom = !!searchParams.get('personal');
   const [layout, setLayout] = useState<CallLayoutType>('speaker-left');
@@ -101,7 +101,7 @@ const MeetingRoom = ({ meetingId, user,language,gender }: { meetingId: string | 
           </div>
         </div>
         <div className="fixed bottom-5 flex w-full items-center justify-center gap-5">
-          <Translate meetingId={meetingId} user={user} language={language} gender={gender}/>
+          <Translate meetingId={meetingId} user={user} language={language} gender={gender} locale={locale}/>
           <CustomScreenShareButton/>
           <CustomRecordCallButton/>
           <DropdownMenu>

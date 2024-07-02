@@ -13,7 +13,7 @@ import { translateTextGroq, translateTextItranslate, translateTextOpenAi } from 
 import { convertResponseToAudio } from "@/lib/getAudio";
 import { cn } from "@/lib/utils";
 
-const Translate = ({ meetingId, user, language, gender }: { meetingId: string | string[], user: any, language: string, gender: string }) => {
+const Translate = ({ meetingId, user, language, gender, locale }: { meetingId: string | string[], user: any, language: string, gender: string, locale: string }) => {
   const router = useRouter();
   const [client, setClient] = useState<any>();
   const [channel, setChannel] = useState<any>();
@@ -107,9 +107,10 @@ const Translate = ({ meetingId, user, language, gender }: { meetingId: string | 
             }
             if (translatedText) {
               const audioData = await convertResponseToAudio(translatedText, senderGender);
+              // const audioData = "";
               if (translatedText && audioData) {
                 const audio = URL.createObjectURL(audioData);
-                console.log("audio ", audio);
+                // console.log("audio ", audio);
                 setVoiceMessages((prev: any) => {
                   return (
                     [...prev, { audio, translatedText, username: event.user?.name }]
@@ -163,6 +164,24 @@ const Translate = ({ meetingId, user, language, gender }: { meetingId: string | 
       const audio = new Audio(firstAudio.audio);
       const displayText = firstAudio.translatedText;
       setRemoteSpeech({ user: firstAudio.username, text: firstAudio.translatedText })
+
+
+      // const synth = window.speechSynthesis;
+      // console.log("text ",firstAudio.translatedText);
+      // console.log("locale ",locale);
+      // const utterance = new SpeechSynthesisUtterance(firstAudio.translatedText);
+      // utterance.lang = locale;
+
+      // utterance.onend = () => {
+      //   setCurrentVoice((obj) => {
+      //     return ({
+      //       playing: false,
+      //       index: obj.index + 1
+      //     })
+      //   });
+      // };
+
+
       audio.addEventListener('ended', () => {
         URL.revokeObjectURL(firstAudio.audio);
         setCurrentVoice((obj) => {
@@ -172,8 +191,11 @@ const Translate = ({ meetingId, user, language, gender }: { meetingId: string | 
           })
         });
       });
+
+
       speakingRef.current = true;
       audio.play();
+      // synth.speak(utterance);
       setCurrentVoice((obj) => {
         return (
           {
@@ -288,7 +310,7 @@ const Translate = ({ meetingId, user, language, gender }: { meetingId: string | 
           yourSpeech &&
           <div className="flex justify-center bg-[#393f49cc] text-white px-3 w-full">
             <span>
-              {user.username} : 
+              {user.username} :
             </span>
             <span>
               {yourSpeech}
@@ -296,10 +318,10 @@ const Translate = ({ meetingId, user, language, gender }: { meetingId: string | 
           </div>
         }
         {
-        remoteSpeech.user && remoteSpeech.text &&
+          remoteSpeech.user && remoteSpeech.text &&
           <div className="flex bg-[#393f49cc] justify-center text-white px-3 w-full">
             <span>
-              {remoteSpeech.user} : 
+              {remoteSpeech.user} :
             </span>
             <span>
               {remoteSpeech.text}

@@ -4,6 +4,7 @@ import { SignOutButton, useUser } from "@clerk/nextjs";
 import Image from "next/image";
 import Link from "next/link";
 import { useState, useEffect } from "react";
+import { Button } from "./ui/button";
 
 export default function Hero() {
     const { isSignedIn } = useUser();
@@ -121,6 +122,18 @@ export default function Hero() {
                             {/* <Link href={isSignedIn ? "/connect/chat" : "/sign-in"} className="px-7 py-3 w-full bg-gray-700 text-gray-200 text-center rounded-md block sm:w-auto">
                                 Chat
                             </Link> */}
+                            <Button onClick={() => {
+                                const synth = window.speechSynthesis;
+                                const utterance = new SpeechSynthesisUtterance("Hallo, Welt!");
+                                utterance.lang = "de-DE";
+
+                                utterance.onend = () => {
+                                    console.log("I have finished speaking")
+                                };
+                                synth.speak(utterance);
+                            }}>
+                                Play
+                            </Button>
                         </div>
                     </div>
                     <div>
